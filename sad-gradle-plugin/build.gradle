@@ -25,8 +25,8 @@ jar.enabled = true
 dependencies {
     implementation "org.apache.avro:avro-compiler:${avroVersion}"
 
-//    implementation "org.slf4j:slf4j-api:${slf4jVersion}"
-//    implementation "org.slf4j:slf4j-simple:${slf4jVersion}"
+    implementation "org.slf4j:slf4j-api:${slf4jVersion}"
+    implementation "org.slf4j:slf4j-simple:${slf4jVersion}"
 }
 
 gradlePlugin {

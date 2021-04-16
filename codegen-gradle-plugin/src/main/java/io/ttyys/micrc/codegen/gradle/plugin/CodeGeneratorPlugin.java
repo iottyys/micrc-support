@@ -1,9 +1,9 @@
-package io.ttyys.tools.gradle.plugin;
+package io.ttyys.micrc.codegen.gradle.plugin;
 
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 
-public class SimplePlugin implements Plugin<Project> {
+public class CodeGeneratorPlugin implements Plugin<Project> {
     @Override
     public void apply(Project project) {
 

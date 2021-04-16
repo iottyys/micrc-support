@@ -41,7 +41,7 @@ gradlePlugin {
         }
         "service-integration" {
             id = 'io.ttyys.gradle.codegen.integration-gradle-plugin'
-            implementationClass = 'io.ttyys.micrc.codegen.gradle.plugin.integration.CodeGeneratorPlugin'
+            implementationClass = 'io.ttyys.micrc.codegen.gradle.plugin.integration.ServiceIntegrationPlugin'
         }
     }
 }
