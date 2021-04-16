@@ -1,12 +1,10 @@
-import org.gradle.internal.jvm.Jvm
-
 plugins {
     id 'java'
     id 'idea'
     id 'java-gradle-plugin'
 }
 
-group 'io.ttyys.tools'
+group 'io.ttyys.micrc'
 version '0.0.1-SNAPSHOT'
 sourceCompatibility = '1.8'
 targetCompatibility = '1.8'
@@ -14,7 +12,6 @@ targetCompatibility = '1.8'
 ext {
     set('groovyVersion', '2.4.15')
     set('avroVersion', '1.10.2')
-    set('commonsIoVersion', '2.8.0')
     set('slf4jVersion', '1.7.30')
 }
 
@@ -26,8 +23,6 @@ repositories {
 jar.enabled = true
 
 dependencies {
-    compileOnly files(Jvm.current().toolsJar)
-
     implementation "org.apache.avro:avro-compiler:${avroVersion}"
 
 //    implementation "org.slf4j:slf4j-api:${slf4jVersion}"
@@ -36,9 +31,13 @@ dependencies {
 
 gradlePlugin {
     plugins {
-        simplePlugin {
-            id = 'io.ttyys.tools.codegen-gradle-plugin'
-            implementationClass = 'io.ttyys.tools.gradle.plugin.SimplePlugin'
+        "schema-design" {
+            id = 'io.ttyys.gradle.sad.sad-gradle-plugin'
+            implementationClass = 'io.ttyys.micrc.sad.gradle.plugin.SchemaDesignPlugin'
+        }
+        "service-integration" {
+            id = 'io.ttyys.gradle.sad.integration-gradle-plugin'
+            implementationClass = 'io.ttyys.micrc.sad.gradle.plugin.integration.ServiceIntegrationPlugin'
         }
     }
 }
