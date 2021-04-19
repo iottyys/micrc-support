@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'idea'
     id 'java-gradle-plugin'
+    id "maven"
 }
 
 group 'io.ttyys.micrc'
@@ -29,6 +30,15 @@ dependencies {
     implementation "org.slf4j:slf4j-simple:${slf4jVersion}"
 }
 
+uploadArchives {
+    repositories {
+        /**配置Maven部署器，将工件上传到本地目录，这里是放到与该项目同级目录的repo目录下*/
+        mavenDeployer {
+            repository(url: "file:///media/zhaowang/Works/repos/maven_repository")
+        }
+    }
+}
+
 gradlePlugin {
     plugins {
         "schema-design" {
@@ -41,3 +51,4 @@ gradlePlugin {
         }
     }
 }
+
