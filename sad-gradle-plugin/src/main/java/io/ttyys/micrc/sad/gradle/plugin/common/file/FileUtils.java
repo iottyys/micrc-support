@@ -19,10 +19,8 @@ package io.ttyys.micrc.sad.gradle.plugin.common.file;
 import io.ttyys.micrc.sad.gradle.plugin.common.Constants;
 import org.gradle.api.file.ProjectLayout;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
 /**
@@ -150,5 +148,26 @@ public class FileUtils {
             path = file.toPath();
         }
         return path.toString();
+    }
+
+    public static String readJsonString(String fileName) {
+        String jsonStr = "";
+        try {
+            File jsonFile = new File(fileName);
+            FileReader fileReader = new FileReader(jsonFile);
+            Reader reader = new InputStreamReader(new FileInputStream(jsonFile), StandardCharsets.UTF_8);
+            int ch = 0;
+            StringBuilder sb = new StringBuilder();
+            while ((ch = reader.read()) != -1) {
+                sb.append((char) ch);
+            }
+            fileReader.close();
+            reader.close();
+            jsonStr = sb.toString();
+            return jsonStr;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }

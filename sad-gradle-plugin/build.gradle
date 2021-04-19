@@ -14,6 +14,7 @@ ext {
     set('groovyVersion', '2.4.15')
     set('avroVersion', '1.10.2')
     set('slf4jVersion', '1.7.30')
+    set('fastjsonVersion', '1.2.76')
 }
 
 repositories {
@@ -24,6 +25,7 @@ repositories {
 jar.enabled = true
 
 dependencies {
+    implementation "com.alibaba:fastjson:${fastjsonVersion}"
     implementation "org.apache.avro:avro-compiler:${avroVersion}"
 
     implementation "org.slf4j:slf4j-api:${slf4jVersion}"

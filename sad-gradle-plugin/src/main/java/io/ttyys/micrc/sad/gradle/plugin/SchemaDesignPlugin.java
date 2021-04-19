@@ -1,7 +1,12 @@
 package io.ttyys.micrc.sad.gradle.plugin;
 
 import io.ttyys.micrc.sad.gradle.plugin.common.Constants;
+import io.ttyys.micrc.sad.gradle.plugin.common.ProjectUtils;
 import io.ttyys.micrc.sad.gradle.plugin.common.SetBuilder;
+import io.ttyys.micrc.sad.gradle.plugin.common.gradle.GradleCompatibility;
+import io.ttyys.micrc.sad.gradle.plugin.extension.AvroExtension;
+import io.ttyys.micrc.sad.gradle.plugin.extension.DefaultAvroExtension;
+import io.ttyys.micrc.sad.gradle.plugin.extension.SchemaDesignExtension;
 import io.ttyys.micrc.sad.gradle.plugin.task.GenerateAvroJavaTask;
 import io.ttyys.micrc.sad.gradle.plugin.task.GenerateAvroProtocolTask;
 import org.gradle.api.Plugin;
@@ -31,12 +36,22 @@ public class SchemaDesignPlugin implements Plugin<Project> {
     public void apply(Project project) {
         project.getPlugins().apply(JavaPlugin.class);
         project.getPlugins().apply(AvroBasePlugin.class);
+        configureExtension(project);
         configureTasks(project);
         configureIntelliJ(project);
     }
 
+    private static void configureExtension(final Project project) {
+        final SchemaDesignExtension schemaDesignExtension =
+                GradleCompatibility.createExtensionWithObjectFactory(project, Constants.SCHEMA_DESIGN_EXTENSION_NAME, SchemaDesignExtension.class);
+        project.getTasks().withType(GenerateAvroProtocolTask.class).configureEach(task -> {
+            task.getSchemaDesignPath().convention(schemaDesignExtension.getSchemaDesignPath());
+            task.getServiceIntegrationPath().convention(schemaDesignExtension.getServiceIntegrationPath());
+        });
+    }
+
     private static void configureTasks(final Project project) {
-        getSourceSets(project).configureEach(sourceSet -> {
+        ProjectUtils.getSourceSets(project).configureEach(sourceSet -> {
             TaskProvider<GenerateAvroProtocolTask> protoTaskProvider = configureProtocolGenerationTask(project, sourceSet);
             TaskProvider<GenerateAvroJavaTask> javaTaskProvider = configureJavaGenerationTask(project, sourceSet, protoTaskProvider);
             configureTaskDependencies(project, sourceSet, javaTaskProvider);
@@ -45,18 +60,18 @@ public class SchemaDesignPlugin implements Plugin<Project> {
 
     private static void configureIntelliJ(final Project project) {
         project.getPlugins().withType(IdeaPlugin.class).configureEach(ideaPlugin -> {
-            SourceSet mainSourceSet = getMainSourceSet(project);
-            SourceSet testSourceSet = getTestSourceSet(project);
+            SourceSet mainSourceSet = ProjectUtils.getMainSourceSet(project);
+            SourceSet testSourceSet = ProjectUtils.getTestSourceSet(project);
             IdeaModule module = ideaPlugin.getModel().getModule();
             module.setSourceDirs(new SetBuilder<File>()
                     .addAll(module.getSourceDirs())
-                    .add(getAvroSourceDir(project, mainSourceSet))
-                    .add(getGeneratedOutputDir(project, mainSourceSet, Constants.JAVA_EXTENSION).map(Directory::getAsFile).get())
+                    .add(ProjectUtils.getAvroSourceDir(project, mainSourceSet))
+                    .add(ProjectUtils.getGeneratedOutputDir(project, mainSourceSet, Constants.JAVA_EXTENSION).map(Directory::getAsFile).get())
                     .build());
             module.setTestSourceDirs(new SetBuilder<File>()
                     .addAll(module.getTestSourceDirs())
-                    .add(getAvroSourceDir(project, testSourceSet))
-                    .add(getGeneratedOutputDir(project, testSourceSet, Constants.JAVA_EXTENSION).map(Directory::getAsFile).get())
+                    .add(ProjectUtils.getAvroSourceDir(project, testSourceSet))
+                    .add(ProjectUtils.getGeneratedOutputDir(project, testSourceSet, Constants.JAVA_EXTENSION).map(Directory::getAsFile).get())
                     .build());
             // IntelliJ doesn't allow source directories beneath an excluded directory.
             // Thus, we remove the build directory exclude and add all non-generated sub-directories as excludes.
@@ -74,11 +89,6 @@ public class SchemaDesignPlugin implements Plugin<Project> {
                                 project.mkdir(generateAvroJavaTask.getOutputDir().get()))));
     }
 
-    private static SourceSetContainer getSourceSets(Project project) {
-        return project.getConvention().getPlugin(JavaPluginConvention.class).getSourceSets();
-    }
-
-
     private static TaskProvider<GenerateAvroProtocolTask> configureProtocolGenerationTask(final Project project,
                                                                                           final SourceSet sourceSet) {
         String taskName = sourceSet.getTaskName("generate", "avroProtocol");
@@ -86,10 +96,10 @@ public class SchemaDesignPlugin implements Plugin<Project> {
             task.setDescription(
                     String.format("Generates %s Avro protocol definition files from IDL files.", sourceSet.getName()));
             task.setGroup(Constants.GROUP_SOURCE_GENERATION);
-            task.source(getAvroSourceDir(project, sourceSet));
+            task.source(ProjectUtils.getAvroSourceDir(project, sourceSet));
             task.include("**/*." + Constants.IDL_EXTENSION);
             task.setClasspath(project.getConfigurations().getByName(RUNTIME_CLASSPATH_CONFIGURATION_NAME));
-            task.getOutputDir().convention(getGeneratedOutputDir(project, sourceSet, Constants.PROTOCOL_EXTENSION));
+            task.getOutputDir().convention(ProjectUtils.getGeneratedOutputDir(project, sourceSet, Constants.PROTOCOL_EXTENSION));
         });
     }
 
@@ -100,10 +110,10 @@ public class SchemaDesignPlugin implements Plugin<Project> {
             task.setDescription(String.format("Generates %s Avro Java source files from schema/protocol definition files.",
                     sourceSet.getName()));
             task.setGroup(Constants.GROUP_SOURCE_GENERATION);
-            task.source(getAvroSourceDir(project, sourceSet));
+            task.source(ProjectUtils.getAvroSourceDir(project, sourceSet));
             task.source(protoTaskProvider);
             task.include("**/*." + Constants.SCHEMA_EXTENSION, "**/*." + Constants.PROTOCOL_EXTENSION);
-            task.getOutputDir().convention(getGeneratedOutputDir(project, sourceSet, Constants.JAVA_EXTENSION));
+            task.getOutputDir().convention(ProjectUtils.getGeneratedOutputDir(project, sourceSet, Constants.JAVA_EXTENSION));
 
             sourceSet.getJava().srcDir(task.getOutputDir());
 
@@ -117,15 +127,6 @@ public class SchemaDesignPlugin implements Plugin<Project> {
         return javaTaskProvider;
     }
 
-    private static File getAvroSourceDir(Project project, SourceSet sourceSet) {
-        return project.file(String.format("src/%s/avro", sourceSet.getName()));
-    }
-
-    private static Provider<Directory> getGeneratedOutputDir(Project project, SourceSet sourceSet, String extension) {
-        String generatedOutputDirName = String.format("generated-%s-avro-%s", sourceSet.getName(), extension);
-        return project.getLayout().getBuildDirectory().dir(generatedOutputDirName);
-    }
-
     private static void configureTaskDependencies(final Project project, final SourceSet sourceSet,
                                                   final TaskProvider<GenerateAvroJavaTask> javaTaskProvider) {
         project.getPluginManager().withPlugin("org.jetbrains.kotlin.jvm", appliedPlugin ->
@@ -136,13 +137,6 @@ public class SchemaDesignPlugin implements Plugin<Project> {
         );
     }
 
-    private static SourceSet getMainSourceSet(Project project) {
-        return getSourceSets(project).getByName(SourceSet.MAIN_SOURCE_SET_NAME);
-    }
-
-    private static SourceSet getTestSourceSet(Project project) {
-        return getSourceSets(project).getByName(SourceSet.TEST_SOURCE_SET_NAME);
-    }
 
     private static class NonGeneratedDirectoryFileFilter implements FileFilter {
         @Override

@@ -52,6 +52,7 @@ public class Constants {
     public static final String GROUP_SOURCE_GENERATION = "Source Generation";
 
     public static final String AVRO_EXTENSION_NAME = "avro";
+    public static final String SCHEMA_DESIGN_EXTENSION_NAME = "codegen-config";
 
     public static final String OPTION_FIELD_VISIBILITY = "fieldVisibility";
     public static final String OPTION_STRING_TYPE = "stringType";
@@ -61,4 +62,6 @@ public class Constants {
 
     public static final TypeOf<Class<? extends Conversion<?>>> CONVERSION_TYPE =
             new TypeOf<Class<? extends Conversion<?>>>() {};
+    public static final String SCHEMA_DESIGN_PATH_KEY = "program";
+    public static final String SERVICE_INTEGRATION_PATH_KEY = "feature";
 }
