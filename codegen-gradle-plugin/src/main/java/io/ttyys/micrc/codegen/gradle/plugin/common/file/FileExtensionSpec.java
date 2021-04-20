@@ -13,38 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.ttyys.micrc.sad.gradle.plugin.common;
+package io.ttyys.micrc.codegen.gradle.plugin.common.file;
 
+import org.gradle.api.specs.Spec;
+
+import java.io.File;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-@SuppressWarnings("UnusedReturnValue")
-public class SetBuilder<T> {
-    private Set<T> set = new HashSet<T>();
+public class FileExtensionSpec implements Spec<File> {
+    private final Set<String> extensions;
 
-    public SetBuilder<T> add(T e) {
-        set.add(e);
-        return this;
+    public FileExtensionSpec(String... extensions) {
+        this.extensions = new HashSet<>(Arrays.asList(extensions));
     }
 
-    public final SetBuilder<T> addAll(T[] c) {
-        Collections.addAll(set, c);
-        return this;
+    public FileExtensionSpec(Collection<String> extensions) {
+        this.extensions = new HashSet<>(extensions);
     }
 
-    public SetBuilder<T> addAll(Collection<? extends T> c) {
-        set.addAll(c);
-        return this;
-    }
-
-    public SetBuilder<T> remove(T e) {
-        set.remove(e);
-        return this;
-    }
-
-    public Set<T> build() {
-        return set;
+    @Override
+    public boolean isSatisfiedBy(File file) {
+        return extensions.contains(FilenameUtils.getExtension(file.getName()));
     }
 }

@@ -1,21 +1,21 @@
 /**
  * Copyright © 2013-2019 Commerce Technologies, LLC.
- *
+ * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.ttyys.micrc.sad.gradle.plugin.extension;
+package io.ttyys.micrc.codegen.gradle.plugin.extension;
 
-import io.ttyys.micrc.sad.gradle.plugin.common.Constants;
+import io.ttyys.micrc.codegen.gradle.plugin.common.Constants;
 import org.apache.avro.Conversion;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.compiler.specific.SpecificCompiler;
@@ -31,7 +31,7 @@ import java.nio.charset.Charset;
 import java.util.Map;
 
 @SuppressWarnings({"unused", "WeakerAccess"})
-public class DefaultAvroExtension implements AvroExtension {
+public class CodeGeneratorExtension {
     private final Property<String> outputCharacterEncoding;
     private final Property<String> stringType;
     private final Property<String> fieldVisibility;
@@ -45,7 +45,7 @@ public class DefaultAvroExtension implements AvroExtension {
     private final ListProperty<Class<? extends Conversion<?>>> customConversions;
 
     @Inject
-    public DefaultAvroExtension(ObjectFactory objects) {
+    public CodeGeneratorExtension(ObjectFactory objects) {
         this.outputCharacterEncoding = objects.property(String.class);
         this.stringType = objects.property(String.class).convention(Constants.DEFAULT_STRING_TYPE);
         this.fieldVisibility = objects.property(String.class).convention(Constants.DEFAULT_FIELD_VISIBILITY);
@@ -54,15 +54,14 @@ public class DefaultAvroExtension implements AvroExtension {
         this.createOptionalGetters = objects.property(Boolean.class).convention(Constants.DEFAULT_CREATE_OPTIONAL_GETTERS);
         this.gettersReturnOptional = objects.property(Boolean.class).convention(Constants.DEFAULT_GETTERS_RETURN_OPTIONAL);
         this.optionalGettersForNullableFieldsOnly = objects.property(Boolean.class)
-            .convention(Constants.DEFAULT_OPTIONAL_GETTERS_FOR_NULLABLE_FIELDS_ONLY);
+                .convention(Constants.DEFAULT_OPTIONAL_GETTERS_FOR_NULLABLE_FIELDS_ONLY);
         this.enableDecimalLogicalType = objects.property(Boolean.class).convention(Constants.DEFAULT_ENABLE_DECIMAL_LOGICAL_TYPE);
         this.logicalTypeFactories = objects.mapProperty(String.class, Constants.LOGICAL_TYPE_FACTORY_TYPE.getConcreteClass())
-            .convention(Constants.DEFAULT_LOGICAL_TYPE_FACTORIES);
+                .convention(Constants.DEFAULT_LOGICAL_TYPE_FACTORIES);
         this.customConversions =
-            objects.listProperty(Constants.CONVERSION_TYPE.getConcreteClass()).convention(Constants.DEFAULT_CUSTOM_CONVERSIONS);
+                objects.listProperty(Constants.CONVERSION_TYPE.getConcreteClass()).convention(Constants.DEFAULT_CUSTOM_CONVERSIONS);
     }
 
-    @Override
     public Property<String> getOutputCharacterEncoding() {
         return outputCharacterEncoding;
     }
@@ -75,7 +74,6 @@ public class DefaultAvroExtension implements AvroExtension {
         setOutputCharacterEncoding(outputCharacterEncoding.name());
     }
 
-    @Override
     public Property<String> getStringType() {
         return stringType;
     }
@@ -88,7 +86,6 @@ public class DefaultAvroExtension implements AvroExtension {
         setStringType(stringType.name());
     }
 
-    @Override
     public Property<String> getFieldVisibility() {
         return fieldVisibility;
     }
@@ -101,7 +98,6 @@ public class DefaultAvroExtension implements AvroExtension {
         setFieldVisibility(fieldVisibility.name());
     }
 
-    @Override
     public Property<String> getTemplateDirectory() {
         return templateDirectory;
     }
@@ -110,7 +106,6 @@ public class DefaultAvroExtension implements AvroExtension {
         this.templateDirectory.set(templateDirectory);
     }
 
-    @Override
     public Property<Boolean> isCreateSetters() {
         return createSetters;
     }
@@ -123,7 +118,6 @@ public class DefaultAvroExtension implements AvroExtension {
         this.createSetters.set(createSetters);
     }
 
-    @Override
     public Property<Boolean> isCreateOptionalGetters() {
         return createOptionalGetters;
     }
@@ -136,7 +130,6 @@ public class DefaultAvroExtension implements AvroExtension {
         this.createOptionalGetters.set(createOptionalGetters);
     }
 
-    @Override
     public Property<Boolean> isGettersReturnOptional() {
         return gettersReturnOptional;
     }
@@ -149,7 +142,6 @@ public class DefaultAvroExtension implements AvroExtension {
         this.gettersReturnOptional.set(gettersReturnOptional);
     }
 
-    @Override
     public Property<Boolean> isOptionalGettersForNullableFieldsOnly() {
         return optionalGettersForNullableFieldsOnly;
     }
@@ -162,7 +154,6 @@ public class DefaultAvroExtension implements AvroExtension {
         this.optionalGettersForNullableFieldsOnly.set(optionalGettersForNullableFieldsOnly);
     }
 
-    @Override
     public Property<Boolean> isEnableDecimalLogicalType() {
         return enableDecimalLogicalType;
     }
@@ -175,22 +166,20 @@ public class DefaultAvroExtension implements AvroExtension {
         this.enableDecimalLogicalType.set(enableDecimalLogicalType);
     }
 
-    @Override
     public MapProperty<String, Class<? extends LogicalTypes.LogicalTypeFactory>> getLogicalTypeFactories() {
         return logicalTypeFactories;
     }
 
     public void setLogicalTypeFactories(Provider<? extends Map<? extends String,
-        ? extends Class<? extends LogicalTypes.LogicalTypeFactory>>> provider) {
+            ? extends Class<? extends LogicalTypes.LogicalTypeFactory>>> provider) {
         this.logicalTypeFactories.set(provider);
     }
 
     public void setLogicalTypeFactories(Map<? extends String,
-        ? extends Class<? extends LogicalTypes.LogicalTypeFactory>> logicalTypeFactories) {
+            ? extends Class<? extends LogicalTypes.LogicalTypeFactory>> logicalTypeFactories) {
         this.logicalTypeFactories.set(logicalTypeFactories);
     }
 
-    @Override
     public ListProperty<Class<? extends Conversion<?>>> getCustomConversions() {
         return customConversions;
     }
@@ -203,14 +192,12 @@ public class DefaultAvroExtension implements AvroExtension {
         this.customConversions.set(customConversions);
     }
 
-    @Override
-    public AvroExtension logicalTypeFactory(String typeName, Class<? extends LogicalTypes.LogicalTypeFactory> typeFactoryClass) {
+    public CodeGeneratorExtension logicalTypeFactory(String typeName, Class<? extends LogicalTypes.LogicalTypeFactory> typeFactoryClass) {
         logicalTypeFactories.put(typeName, typeFactoryClass);
         return this;
     }
 
-    @Override
-    public AvroExtension customConversion(Class<? extends Conversion<?>> conversionClass) {
+    public CodeGeneratorExtension customConversion(Class<? extends Conversion<?>> conversionClass) {
         customConversions.add(conversionClass);
         return this;
     }

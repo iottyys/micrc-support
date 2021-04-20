@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.ttyys.micrc.sad.gradle.plugin.task;
+package io.ttyys.micrc.codegen.gradle.plugin.task;
 
-import io.ttyys.micrc.sad.gradle.plugin.common.*;
-import io.ttyys.micrc.sad.gradle.plugin.common.file.FileExtensionSpec;
-import io.ttyys.micrc.sad.gradle.plugin.common.file.FileUtils;
+import io.ttyys.micrc.codegen.gradle.plugin.common.*;
+import io.ttyys.micrc.codegen.gradle.plugin.common.file.FileExtensionSpec;
+import io.ttyys.micrc.codegen.gradle.plugin.common.file.FileUtils;
 import org.apache.avro.Conversion;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Protocol;

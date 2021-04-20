@@ -1,6 +1,5 @@
-package io.ttyys.micrc.sad.gradle.plugin.common;
+package io.ttyys.micrc.codegen.gradle.plugin.common;
 
-import io.ttyys.micrc.sad.gradle.plugin.common.file.FileState;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaParseException;
 import org.gradle.api.GradleException;

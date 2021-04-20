@@ -13,10 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.ttyys.micrc.sad.gradle.plugin.common;
+package io.ttyys.micrc.codegen.gradle.plugin.common;
 
-import io.ttyys.micrc.sad.gradle.plugin.common.file.FileState;
-import io.ttyys.micrc.sad.gradle.plugin.common.file.FileUtils;
+import io.ttyys.micrc.codegen.gradle.plugin.common.file.FileUtils;
 import org.apache.avro.Schema;
 import org.gradle.api.file.ProjectLayout;
 

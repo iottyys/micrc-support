@@ -1,4 +1,4 @@
-package io.ttyys.micrc.sad.gradle.plugin.common;
+package io.ttyys.micrc.codegen.gradle.plugin.common;
 
 import org.apache.avro.Protocol;
 import org.gradle.api.provider.Property;

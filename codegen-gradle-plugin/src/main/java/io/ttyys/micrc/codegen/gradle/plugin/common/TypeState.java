@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.ttyys.micrc.sad.gradle.plugin.common;
+package io.ttyys.micrc.codegen.gradle.plugin.common;
 
 import org.apache.avro.Schema;
 import org.gradle.api.GradleException;

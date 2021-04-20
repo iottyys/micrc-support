@@ -36,7 +36,7 @@ uploadArchives {
     repositories {
         /**配置Maven部署器，将工件上传到本地目录，这里是放到与该项目同级目录的repo目录下*/
         mavenDeployer {
-            repository(url: "file:///media/zhaowang/Works/repos/maven_repository")
+            repository(url: "file://" + new File("../../repo").getAbsolutePath())
         }
     }
 }

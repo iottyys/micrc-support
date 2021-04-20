@@ -13,18 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.ttyys.micrc.sad.gradle.plugin.common;
+package io.ttyys.micrc.codegen.gradle.plugin.common;
 
-import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
-public class Enums {
-    public static <T extends Enum<T>> T parseCaseInsensitive(String label, T[] values, String input) {
-        for (T value : values) {
-            if (value.name().equalsIgnoreCase(input)) {
-                return value;
-            }
+public class MapUtils {
+    /**
+     * Returns the map of all entries present in the first map but not present in the second map (by key).
+     */
+    public static <K, V> Map<K, V> asymmetricDifference(Map<K, V> a, Map<K, V> b) {
+        if (b == null || b.isEmpty()) {
+            return a;
         }
-        throw new IllegalArgumentException(String.format("Invalid %s '%s'.  Value values are: %s",
-                label, input, Arrays.asList(values)));
+        Map<K, V> result = new LinkedHashMap<>(a);
+        result.keySet().removeAll(b.keySet());
+        return result;
     }
 }
