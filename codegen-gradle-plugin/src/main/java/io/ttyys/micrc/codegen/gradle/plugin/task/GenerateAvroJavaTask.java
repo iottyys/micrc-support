@@ -57,6 +57,7 @@ public class GenerateAvroJavaTask extends OutputDirTask {
     private static Set<String> SUPPORTED_EXTENSIONS =
             new SetBuilder<String>().add(Constants.PROTOCOL_EXTENSION).add(Constants.SCHEMA_EXTENSION).build();
 
+    private final Property<String> resourceAvroDirPath;
     private final Property<String> outputCharacterEncoding;
     private final Property<String> stringType;
     private final Property<String> fieldVisibility;
@@ -78,6 +79,7 @@ public class GenerateAvroJavaTask extends OutputDirTask {
     @Inject
     public GenerateAvroJavaTask(ObjectFactory objects) {
         super();
+        this.resourceAvroDirPath = objects.property(String.class).convention("");
         this.outputCharacterEncoding = objects.property(String.class);
         this.stringType = objects.property(String.class).convention(Constants.DEFAULT_STRING_TYPE);
         this.fieldVisibility = objects.property(String.class).convention(Constants.DEFAULT_FIELD_VISIBILITY);
@@ -98,6 +100,19 @@ public class GenerateAvroJavaTask extends OutputDirTask {
                 objects.listProperty(Constants.CONVERSION_TYPE.getConcreteClass()).convention(Constants.DEFAULT_CUSTOM_CONVERSIONS);
         this.projectLayout = getProject().getLayout();
         this.resolver = new SchemaResolver(projectLayout, getLogger());
+    }
+
+    @Input
+    public Property<String> getResourceAvroDirPath() {
+        return resourceAvroDirPath;
+    }
+
+    public void setResourceAvroDirPath(String resourceAvroDirPath) {
+        this.resourceAvroDirPath.set(resourceAvroDirPath);
+    }
+
+    public void setResourceAvroDirPath(Charset resourceAvroDirPath) {
+        setResourceAvroDirPath(resourceAvroDirPath.name());
     }
 
     @Optional

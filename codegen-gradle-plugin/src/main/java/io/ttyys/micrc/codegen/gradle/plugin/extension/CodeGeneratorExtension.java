@@ -32,6 +32,7 @@ import java.util.Map;
 
 @SuppressWarnings({"unused", "WeakerAccess"})
 public class CodeGeneratorExtension {
+    private final Property<String> resourceAvroDirPath;
     private final Property<String> outputCharacterEncoding;
     private final Property<String> stringType;
     private final Property<String> fieldVisibility;
@@ -46,6 +47,7 @@ public class CodeGeneratorExtension {
 
     @Inject
     public CodeGeneratorExtension(ObjectFactory objects) {
+        this.resourceAvroDirPath = objects.property(String.class).convention("");
         this.outputCharacterEncoding = objects.property(String.class);
         this.stringType = objects.property(String.class).convention(Constants.DEFAULT_STRING_TYPE);
         this.fieldVisibility = objects.property(String.class).convention(Constants.DEFAULT_FIELD_VISIBILITY);
@@ -60,6 +62,18 @@ public class CodeGeneratorExtension {
                 .convention(Constants.DEFAULT_LOGICAL_TYPE_FACTORIES);
         this.customConversions =
                 objects.listProperty(Constants.CONVERSION_TYPE.getConcreteClass()).convention(Constants.DEFAULT_CUSTOM_CONVERSIONS);
+    }
+
+    public Property<String> getResourceAvroDirPath() {
+        return resourceAvroDirPath;
+    }
+
+    public void setResourceAvroDirPath(String resourceAvroDirPath) {
+        this.resourceAvroDirPath.set(resourceAvroDirPath);
+    }
+
+    public void setResourceAvroDirPath(Charset resourceAvroDirPath) {
+        setResourceAvroDirPath(resourceAvroDirPath.name());
     }
 
     public Property<String> getOutputCharacterEncoding() {

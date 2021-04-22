@@ -22,29 +22,29 @@ import org.gradle.api.provider.Property;
 import javax.inject.Inject;
 
 public class SchemaDesignExtension {
-    private final Property<String> schemaDesignPath;
-    private final Property<String> serviceIntegrationPath;
+    private final Property<String> sourcePath;
+    private final Property<String> destPath;
 
     @SuppressWarnings("UnstableApiUsage")
     @Inject
     public SchemaDesignExtension(ObjectFactory objects) {
-        this.schemaDesignPath = objects.property(String.class).convention(Constants.SCHEMA_DESIGN_PATH_KEY);
-        this.serviceIntegrationPath = objects.property(String.class).convention(Constants.SERVICE_INTEGRATION_PATH_KEY);
+        this.sourcePath = objects.property(String.class).convention(Constants.PROTOCOL_SOURCE_PATH_KEY);
+        this.destPath = objects.property(String.class).convention(Constants.PROTOCOL_DEST_PATH_KEY);
     }
 
-    public Property<String> getSchemaDesignPath() {
-        return schemaDesignPath;
+    public Property<String> getSourcePath() {
+        return sourcePath;
     }
 
-    public Property<String> getServiceIntegrationPath() {
-        return serviceIntegrationPath;
+    public Property<String> getDestPath() {
+        return destPath;
     }
 
-    public void setSchemaDesignPath(String schemaDesignPath) {
-        this.schemaDesignPath.set(schemaDesignPath);
+    public void setSourcePath(String schemaDesignPath) {
+        this.sourcePath.set(schemaDesignPath);
     }
 
-    public void setServiceIntegrationPath(String serviceIntegrationPath) {
-        this.serviceIntegrationPath.set(serviceIntegrationPath);
+    public void setDestPath(String destPath) {
+        this.destPath.set(destPath);
     }
 }

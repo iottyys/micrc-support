@@ -15,11 +15,14 @@ targetCompatibility = '1.8'
 ext {
     set('groovyVersion', '2.4.15')
     set('avroVersion', '1.10.2')
+    set('commonsIoVersion', '2.8.0')
     set('slf4jVersion', '1.7.30')
     set('fastjsonVersion', '1.2.76')
+    set('micrcAnnotationVersion', '0.0.1-SNAPSHOT')
 }
 
 repositories {
+    maven { url "file://" + new File("../../repo").getAbsolutePath() }
     mavenLocal()
     mavenCentral()
 }
@@ -32,8 +35,11 @@ dependencies {
     implementation "com.alibaba:fastjson:${fastjsonVersion}"
     implementation "org.apache.avro:avro-compiler:${avroVersion}"
 
+    implementation "commons-io:commons-io:${commonsIoVersion}"
     implementation "org.slf4j:slf4j-api:${slf4jVersion}"
     implementation "org.slf4j:slf4j-simple:${slf4jVersion}"
+
+    implementation "io.ttyys.micrc:micrc-annotations:${micrcAnnotationVersion}"
 }
 
 uploadArchives {

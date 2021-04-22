@@ -15,7 +15,6 @@
  */
 package io.ttyys.micrc.sad.gradle.plugin.task;
 
-import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import io.ttyys.micrc.sad.gradle.plugin.common.AvroUtils;
 import io.ttyys.micrc.sad.gradle.plugin.common.Constants;
@@ -54,15 +53,13 @@ import static io.ttyys.micrc.sad.gradle.plugin.common.Constants.IDL_EXTENSION;
 public class GenerateAvroProtocolTask extends OutputDirTask {
 
     private FileCollection classpath;
-    private final Property<String> schemaDesignPath;
-    private final Property<String> serviceIntegrationPath;
+    private final Property<String> destPath;
 
     @Inject
     public GenerateAvroProtocolTask(ObjectFactory objects) {
         super();
         this.classpath = GradleCompatibility.createConfigurableFileCollection(getProject());
-        this.schemaDesignPath = objects.property(String.class).convention(Constants.SCHEMA_DESIGN_PATH_KEY);
-        this.serviceIntegrationPath = objects.property(String.class).convention(Constants.SERVICE_INTEGRATION_PATH_KEY);
+        this.destPath = objects.property(String.class).convention(Constants.PROTOCOL_DEST_PATH_KEY);
     }
 
     public void setClasspath(FileCollection classpath) {
@@ -110,7 +107,7 @@ public class GenerateAvroProtocolTask extends OutputDirTask {
         getLogger().info("Processing {}", idlFile);
         try (Idl idl = new Idl(idlFile, loader)) {
             Protocol protocol = idl.CompilationUnit();
-            String path = AvroUtils.assemblePath(idlFile, srcDirPath, true, null, serviceIntegrationPath);
+            String path = AvroUtils.assemblePath(idlFile, srcDirPath, true, null, destPath);
             File protoFile = new File(srcDir, path);
             String protoJson = protocol.toString(true);
             FileUtils.writeJsonFile(protoFile, protoJson);
@@ -120,7 +117,7 @@ public class GenerateAvroProtocolTask extends OutputDirTask {
             JSONObject jsonObject = JSONObject.parseObject(jsonStr);
             List<String> relationArray = jsonObject.getJSONArray(idlFile.getName().substring(0, idlFile.getName().length() - 1 - IDL_EXTENSION.length())).toJavaList(String.class);
             for (String moduleDir : relationArray) {
-                path = AvroUtils.assemblePath(idlFile, srcDirPath, false, moduleDir, serviceIntegrationPath);
+                path = AvroUtils.assemblePath(idlFile, srcDirPath, false, moduleDir, destPath);
                 protoFile = new File(srcDir, path);
                 FileUtils.writeJsonFile(protoFile, protoJson);
                 getLogger().debug("写入协议 调用/监听 {}", protoFile.getPath());
@@ -147,19 +144,15 @@ public class GenerateAvroProtocolTask extends OutputDirTask {
                 : new URLClassLoader(urls.toArray(new URL[0]), ClassLoader.getSystemClassLoader());
     }
 
-    public void setSchemaDesignPath(String schemaDesignPath) {
-        this.schemaDesignPath.set(schemaDesignPath);
+    public String getGroup() {
+        return Constants.GROUP_SOURCE_GENERATION;
     }
 
-    public void setServiceIntegrationPath(String serviceIntegrationPath) {
-        this.serviceIntegrationPath.set(serviceIntegrationPath);
+    public void setDestPath(String destPath) {
+        this.destPath.set(destPath);
     }
 
-    public Property<String> getSchemaDesignPath() {
-        return schemaDesignPath;
-    }
-
-    public Property<String> getServiceIntegrationPath() {
-        return serviceIntegrationPath;
+    public Property<String> getDestPath() {
+        return destPath;
     }
 }

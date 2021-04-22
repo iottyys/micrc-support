@@ -1,19 +1,21 @@
 package io.ttyys.micrc.codegen.gradle.plugin;
 
+import io.ttyys.micrc.codegen.gradle.plugin.common.AvroUtils;
 import io.ttyys.micrc.codegen.gradle.plugin.common.Constants;
 import io.ttyys.micrc.codegen.gradle.plugin.common.ProjectUtils;
 import io.ttyys.micrc.codegen.gradle.plugin.common.SetBuilder;
 import io.ttyys.micrc.codegen.gradle.plugin.common.gradle.GradleCompatibility;
 import io.ttyys.micrc.codegen.gradle.plugin.extension.CodeGeneratorExtension;
+import io.ttyys.micrc.codegen.gradle.plugin.task.ClearAvroJavaTask;
 import io.ttyys.micrc.codegen.gradle.plugin.task.GenerateAvroJavaTask;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.file.Directory;
+import org.gradle.api.internal.tasks.DefaultSourceSet;
+import org.gradle.api.plugins.ExtensionContainer;
 import org.gradle.api.plugins.JavaPlugin;
-import org.gradle.api.tasks.SourceSet;
-import org.gradle.api.tasks.SourceTask;
-import org.gradle.api.tasks.TaskProvider;
+import org.gradle.api.tasks.*;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.plugins.ide.idea.GenerateIdeaModule;
 import org.gradle.plugins.ide.idea.IdeaPlugin;
@@ -39,44 +41,45 @@ public class CodeGeneratorPlugin implements Plugin<Project> {
         pluginContainer.apply("io.ttyys.gradle.codegen.codegen-gradle-plugin");
         pluginContainer.apply("io.ttyys.gradle.codegen.integration-gradle-plugin");*/
 
-        Set<Project> projects = project.getAllprojects();
-        for (Project childPro : projects) {
-            DependencyHandler dependencyHandler = childPro.getDependencies();
-            dependencyHandler.add("implementation", dependencyHandler.create("org.apache.avro:avro-compiler:1.10.2"));
-            dependencyHandler.add("compile", dependencyHandler.create("io.ttyys.micrc:micrc-annotations:0.0.1-SNAPSHOT"));
-        }
+        DependencyHandler dependencyHandler = project.getDependencies();
+        dependencyHandler.add("implementation", dependencyHandler.create("org.apache.avro:avro-compiler:1.10.2"));
+        dependencyHandler.add("implementation", dependencyHandler.create("org.apache.avro:avro-ipc:1.10.2"));
+        dependencyHandler.add("compile", dependencyHandler.create("io.ttyys.micrc:micrc-annotations:0.0.1-SNAPSHOT"));
+        dependencyHandler.add("annotationProcessor", dependencyHandler.create("io.ttyys.micrc:codegen-gradle-plugin:0.0.1-SNAPSHOT"));
         // 通用配置
         // 注解处理器配置
         // 引入其它插件，客户端只引入这个插件，可以具备所有能力
-
+        TaskContainer taskContainer = project.getTasks();
+        ClearAvroJavaTask clearAvroJavaTask = taskContainer.create("clearAvroJavaTask", ClearAvroJavaTask.class);
+        taskContainer.add(clearAvroJavaTask);
         configureExtension(project);
-        configureTasks(project);
+        configureTasks(project, clearAvroJavaTask);
         configureIntelliJ(project);
     }
 
-    private static void configureExtension(final Project project) {
-        final CodeGeneratorExtension schemaDesignExtension =
+    private static CodeGeneratorExtension configureExtension(final Project project) {
+        final CodeGeneratorExtension codeGeneratorExtension =
                 GradleCompatibility.createExtensionWithObjectFactory(project, Constants.SCHEMA_DESIGN_EXTENSION_NAME, CodeGeneratorExtension.class);
         project.getTasks().withType(GenerateAvroJavaTask.class).configureEach(task -> {
-//            task.getSchemaDesignPath().convention(schemaDesignExtension.getSchemaDesignPath());
-//            task.getServiceIntegrationPath().convention(schemaDesignExtension.getServiceIntegrationPath());
-            task.getOutputCharacterEncoding().convention(schemaDesignExtension.getOutputCharacterEncoding());
-            task.getStringType().convention(schemaDesignExtension.getStringType());
-            task.getFieldVisibility().convention(schemaDesignExtension.getFieldVisibility());
-            task.getTemplateDirectory().convention(schemaDesignExtension.getTemplateDirectory());
-            task.isCreateSetters().convention(schemaDesignExtension.isCreateSetters());
-            task.isCreateOptionalGetters().convention(schemaDesignExtension.isCreateOptionalGetters());
-            task.isGettersReturnOptional().convention(schemaDesignExtension.isGettersReturnOptional());
-            task.isOptionalGettersForNullableFieldsOnly().convention(schemaDesignExtension.isOptionalGettersForNullableFieldsOnly());
-            task.isEnableDecimalLogicalType().convention(schemaDesignExtension.isEnableDecimalLogicalType());
-            task.getLogicalTypeFactories().convention(schemaDesignExtension.getLogicalTypeFactories());
-            task.getCustomConversions().convention(schemaDesignExtension.getCustomConversions());
+            task.setResourceAvroDirPath(codeGeneratorExtension.getResourceAvroDirPath().get());
+            task.getOutputCharacterEncoding().convention(codeGeneratorExtension.getOutputCharacterEncoding());
+            task.getStringType().convention(codeGeneratorExtension.getStringType());
+            task.getFieldVisibility().convention(codeGeneratorExtension.getFieldVisibility());
+            task.getTemplateDirectory().convention(codeGeneratorExtension.getTemplateDirectory());
+            task.isCreateSetters().convention(codeGeneratorExtension.isCreateSetters());
+            task.isCreateOptionalGetters().convention(codeGeneratorExtension.isCreateOptionalGetters());
+            task.isGettersReturnOptional().convention(codeGeneratorExtension.isGettersReturnOptional());
+            task.isOptionalGettersForNullableFieldsOnly().convention(codeGeneratorExtension.isOptionalGettersForNullableFieldsOnly());
+            task.isEnableDecimalLogicalType().convention(codeGeneratorExtension.isEnableDecimalLogicalType());
+            task.getLogicalTypeFactories().convention(codeGeneratorExtension.getLogicalTypeFactories());
+            task.getCustomConversions().convention(codeGeneratorExtension.getCustomConversions());
         });
+        return codeGeneratorExtension;
     }
 
-    private static void configureTasks(final Project project) {
+    private static void configureTasks(final Project project, ClearAvroJavaTask clearAvroJavaTask) {
         ProjectUtils.getSourceSets(project).configureEach(sourceSet -> {
-            TaskProvider<GenerateAvroJavaTask> protoTaskProvider = configureJavaGenerationTask(project, sourceSet);
+            TaskProvider<GenerateAvroJavaTask> protoTaskProvider = configureJavaGenerationTask(project, sourceSet, clearAvroJavaTask);
             configureTaskDependencies(project, sourceSet, protoTaskProvider);
         });
     }
@@ -112,13 +115,20 @@ public class CodeGeneratorPlugin implements Plugin<Project> {
                                 project.mkdir(generateAvroJavaTask.getOutputDir().get()))));
     }
 
-    private static TaskProvider<GenerateAvroJavaTask> configureJavaGenerationTask(final Project project, final SourceSet sourceSet) {
+    private static TaskProvider<GenerateAvroJavaTask> configureJavaGenerationTask(final Project project, final SourceSet sourceSet, ClearAvroJavaTask clearAvroJavaTask) {
         String taskName = sourceSet.getTaskName("generate", "avroJava");
+        Set<File> srcDirs = sourceSet.getResources().getSrcDirs();
+        final File[] avroDir = {null};
         TaskProvider<GenerateAvroJavaTask> javaTaskProvider = project.getTasks().register(taskName, GenerateAvroJavaTask.class, task -> {
             task.setDescription(String.format("Generates %s Avro Java source files from schema/protocol definition files.",
                     sourceSet.getName()));
             task.setGroup(Constants.GROUP_SOURCE_GENERATION);
-            task.source(ProjectUtils.getAvroSourceDir(project, sourceSet));
+            avroDir[0] = new File(task.getResourceAvroDirPath().get() + File.separator + project.getName());
+            srcDirs.add(avroDir[0]);
+            if (SourceSet.MAIN_SOURCE_SET_NAME.equals(sourceSet.getName())) {
+//                task.source(ProjectUtils.getAvroSourceDir(project, sourceSet));
+                task.source(avroDir[0], clearAvroJavaTask);
+            }
             task.include("**/*." + Constants.SCHEMA_EXTENSION, "**/*." + Constants.PROTOCOL_EXTENSION);
             task.getOutputDir().convention(ProjectUtils.getGeneratedOutputDir(project, sourceSet, Constants.JAVA_EXTENSION));
 
@@ -131,6 +141,9 @@ public class CodeGeneratorPlugin implements Plugin<Project> {
         project.getTasks().named(sourceSet.getCompileJavaTaskName(), JavaCompile.class, compileJavaTask -> {
             compileJavaTask.source(javaTaskProvider);
         });
+        if (avroDir[0] != null) {
+            srcDirs.remove(avroDir[0]);
+        }
         return javaTaskProvider;
     }
 
