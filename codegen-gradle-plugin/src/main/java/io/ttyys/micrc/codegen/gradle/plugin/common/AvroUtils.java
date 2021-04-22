@@ -12,6 +12,10 @@ import java.util.List;
  */
 public class AvroUtils {
     /**
+     * The namespace separator.
+     */
+    public static final String NAMESPACE_SEPARATOR = ".";
+    /**
      * The Unix separator.
      */
     public static final String UNIX_SEPARATOR = "/";

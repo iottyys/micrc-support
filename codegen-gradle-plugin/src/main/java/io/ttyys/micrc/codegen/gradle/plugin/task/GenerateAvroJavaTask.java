@@ -15,6 +15,7 @@
  */
 package io.ttyys.micrc.codegen.gradle.plugin.task;
 
+import com.alibaba.fastjson.JSONObject;
 import io.ttyys.micrc.codegen.gradle.plugin.common.*;
 import io.ttyys.micrc.codegen.gradle.plugin.common.file.FileExtensionSpec;
 import io.ttyys.micrc.codegen.gradle.plugin.common.file.FileUtils;
@@ -45,6 +46,8 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -308,10 +311,22 @@ public class GenerateAvroJavaTask extends OutputDirTask {
         return processedFileCount;
     }
 
+    Pattern structureReg = Pattern.compile(".*Structure\\(\"(.*)\"\\).*");
+
     private void processProtoFile(File sourceFile) {
         getLogger().info("Processing {}", sourceFile);
         try {
-            compile(new SpecificCompiler(Protocol.parse(sourceFile)), sourceFile);
+            Protocol protocol = Protocol.parse(sourceFile);
+            String javaAnnotation = protocol.getProp("javaAnnotation");
+            Matcher matcher = structureReg.matcher(javaAnnotation);
+            String pkg = protocol.getNamespace();
+            if (matcher.find()) {
+                pkg += AvroUtils.NAMESPACE_SEPARATOR + matcher.group(1);
+            }
+            JSONObject jsonObject = JSONObject.parseObject(protocol.toString(true));
+            jsonObject.put("namespace", pkg);
+            protocol = Protocol.parse(jsonObject.toJSONString());
+            compile(new SpecificCompiler(protocol), sourceFile);
         } catch (IOException ex) {
             throw new GradleException(String.format("Failed to compile protocol definition file %s", sourceFile), ex);
         }
