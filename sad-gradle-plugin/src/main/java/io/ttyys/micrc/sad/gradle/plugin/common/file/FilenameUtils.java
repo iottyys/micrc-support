@@ -87,7 +87,7 @@ package io.ttyys.micrc.sad.gradle.plugin.common.file;
  * @version $Id: FilenameUtils.java 490424 2006-12-27 01:20:43Z bayard $
  * @since Commons IO 1.1
  */
-class FilenameUtils {
+public class FilenameUtils {
     /**
      * The extension separator character.
      */
@@ -163,7 +163,7 @@ class FilenameUtils {
      * @param filename  the filename to query, null returns null
      * @return the name of the file without the path, or an empty string if none exists
      */
-    private static String getName(String filename) {
+    public static String getName(String filename) {
         if (filename == null) {
             return null;
         }
@@ -239,7 +239,7 @@ class FilenameUtils {
      * @param filename  the filename to query, null returns null
      * @return the filename minus the extension
      */
-    private static String removeExtension(String filename) {
+    public static String removeExtension(String filename) {
         if (filename == null) {
             return null;
         }

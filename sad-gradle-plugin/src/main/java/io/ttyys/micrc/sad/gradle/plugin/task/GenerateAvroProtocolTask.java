@@ -113,7 +113,7 @@ public class GenerateAvroProtocolTask extends OutputDirTask {
             FileUtils.writeJsonFile(protoFile, protoJson);
             getLogger().debug("写入协议定义 {}", protoFile.getPath());
 
-            String jsonStr = FileUtils.readJsonString(idlFile.getParent() + AvroUtils.UNIX_SEPARATOR + "relation.json");
+            String jsonStr = FileUtils.readJsonString(idlFile.getParent() + File.separator + Constants.RELATION_JSON_FILE_NAME);
             JSONObject jsonObject = JSONObject.parseObject(jsonStr);
             List<String> relationArray = jsonObject.getJSONArray(idlFile.getName().substring(0, idlFile.getName().length() - 1 - IDL_EXTENSION.length())).toJavaList(String.class);
             for (String moduleDir : relationArray) {

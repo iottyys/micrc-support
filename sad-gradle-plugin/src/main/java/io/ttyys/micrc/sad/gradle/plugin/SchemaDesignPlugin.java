@@ -6,7 +6,8 @@ import io.ttyys.micrc.sad.gradle.plugin.common.gradle.GradleCompatibility;
 import io.ttyys.micrc.sad.gradle.plugin.extension.SchemaDesignExtension;
 import io.ttyys.micrc.sad.gradle.plugin.task.ClearAvroProtocolTask;
 import io.ttyys.micrc.sad.gradle.plugin.task.GenerateAvroProtocolTask;
-import io.ttyys.micrc.sad.gradle.plugin.task.StructureDesignAvroProtocolTask;
+import io.ttyys.micrc.sad.gradle.plugin.task.StructureDesignTask;
+import io.ttyys.micrc.sad.gradle.plugin.task.TechnologyDesignTask;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaPlugin;
@@ -41,8 +42,9 @@ public class SchemaDesignPlugin implements Plugin<Project> {
         ProjectUtils.getSourceSets(project).configureEach(sourceSet -> {
             TaskProvider<ClearAvroProtocolTask> clearTaskProvider = configureClearAvroProtocolTask(taskContainer, sourceSet, extension);
             TaskProvider<GenerateAvroProtocolTask> protoTaskProvider = configureProtocolGenerationTask(project, sourceSet, clearTaskProvider);
-            TaskProvider<StructureDesignAvroProtocolTask> structureDesignTask = configureStructureDesignTask(project, sourceSet, protoTaskProvider);
-            configureTaskDependencies(project, sourceSet, structureDesignTask);
+            TaskProvider<StructureDesignTask> structureDesignTask = configureStructureDesignTask(project, sourceSet, protoTaskProvider);
+            TaskProvider<TechnologyDesignTask> technologyDesignTask = configureTechnologyDesignTask(project, sourceSet, extension, structureDesignTask);
+            configureTaskDependencies(project, sourceSet, technologyDesignTask);
         });
     }
 
@@ -62,30 +64,47 @@ public class SchemaDesignPlugin implements Plugin<Project> {
         return project.getTasks().register(taskName, GenerateAvroProtocolTask.class, task -> {
             task.setDescription(
                     String.format("Generates %s Avro protocol definition files from IDL files.", sourceSet.getName()));
+//            task.source(clearTaskProvider);
             task.source(ProjectUtils.getAvroSourceDir(project, sourceSet));
-            task.source(clearTaskProvider);
             task.include("**/*." + Constants.IDL_EXTENSION);
             task.setClasspath(project.getConfigurations().getByName(RUNTIME_CLASSPATH_CONFIGURATION_NAME));
             task.getOutputDir().convention(ProjectUtils.getGeneratedOutputDir(project, sourceSet, Constants.PROTOCOL_EXTENSION));
         });
     }
 
-    private static TaskProvider<StructureDesignAvroProtocolTask> configureStructureDesignTask(final Project project,
-                                                                                              final SourceSet sourceSet,
-                                                                                              TaskProvider<GenerateAvroProtocolTask> protoTaskProvider) {
+    private static TaskProvider<StructureDesignTask> configureStructureDesignTask(final Project project,
+                                                                                  final SourceSet sourceSet,
+                                                                                  TaskProvider<GenerateAvroProtocolTask> protoTaskProvider) {
         String taskName = sourceSet.getTaskName("design", "Structure");
-        return project.getTasks().register(taskName, StructureDesignAvroProtocolTask.class, task -> {
+        return project.getTasks().register(taskName, StructureDesignTask.class, task -> {
             task.setDescription(
                     String.format("Design structure %s Avro protocol definition files from self.", sourceSet.getName()));
-            task.source(ProjectUtils.getAvroSourceDir(project, sourceSet));
             task.source(protoTaskProvider);
+            task.source(ProjectUtils.getAvroSourceDir(project, sourceSet));
+            task.include("**/*." + Constants.PROTOCOL_EXTENSION);
+            task.getOutputDir().convention(ProjectUtils.getGeneratedOutputDir(project, sourceSet, Constants.PROTOCOL_EXTENSION));
+        });
+    }
+
+    private static TaskProvider<TechnologyDesignTask> configureTechnologyDesignTask(final Project project,
+                                                                                    final SourceSet sourceSet,
+                                                                                    SchemaDesignExtension extension,
+                                                                                    TaskProvider<StructureDesignTask> protoTaskProvider) {
+        String taskName = sourceSet.getTaskName("design", "Technology");
+        return project.getTasks().register(taskName, TechnologyDesignTask.class, task -> {
+            task.setSourcePath(ProjectUtils.getAvroSourceDirPath(sourceSet) + File.separator + extension.getSourcePath().get());
+            task.setDestPath(ProjectUtils.getAvroSourceDirPath(sourceSet) + File.separator + extension.getDestPath().get());
+            task.setDescription(
+                    String.format("Design technology %s Avro protocol definition files from self.", sourceSet.getName()));
+            task.source(protoTaskProvider);
+            task.source(ProjectUtils.getAvroSourceDir(project, sourceSet));
             task.include("**/*." + Constants.PROTOCOL_EXTENSION);
             task.getOutputDir().convention(ProjectUtils.getGeneratedOutputDir(project, sourceSet, Constants.PROTOCOL_EXTENSION));
         });
     }
 
     private static void configureTaskDependencies(final Project project, final SourceSet sourceSet,
-                                                  final TaskProvider<StructureDesignAvroProtocolTask> javaTaskProvider) {
+                                                  final TaskProvider<TechnologyDesignTask> javaTaskProvider) {
         project.getPluginManager().withPlugin("org.jetbrains.kotlin.jvm", appliedPlugin ->
                 project.getTasks()
                         .withType(SourceTask.class)

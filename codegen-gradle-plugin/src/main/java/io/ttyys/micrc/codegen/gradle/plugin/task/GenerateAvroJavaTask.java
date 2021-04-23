@@ -311,20 +311,22 @@ public class GenerateAvroJavaTask extends OutputDirTask {
         return processedFileCount;
     }
 
-    Pattern structureReg = Pattern.compile(".*Structure\\(\"(.*)\"\\).*");
+    Pattern structureReg = Pattern.compile(".*Structure\\(\"(\\w+.\\w+)\"\\).*");
 
     private void processProtoFile(File sourceFile) {
         getLogger().info("Processing {}", sourceFile);
         try {
             Protocol protocol = Protocol.parse(sourceFile);
-            String javaAnnotation = protocol.getProp("javaAnnotation");
-            Matcher matcher = structureReg.matcher(javaAnnotation);
-            String pkg = protocol.getNamespace();
-            if (matcher.find()) {
-                pkg += AvroUtils.NAMESPACE_SEPARATOR + matcher.group(1);
-            }
             JSONObject jsonObject = JSONObject.parseObject(protocol.toString(true));
-            jsonObject.put("namespace", pkg);
+            String javaAnnotation = protocol.getProp(Constants.JAVA_ANNOTATION_KEY);
+            if (javaAnnotation != null) {
+                Matcher matcher = structureReg.matcher(javaAnnotation);
+                String pkg = protocol.getNamespace();
+                if (matcher.find()) {
+                    pkg += AvroUtils.NAMESPACE_SEPARATOR + matcher.group(1);
+                }
+                jsonObject.put("namespace", pkg);
+            }
             protocol = Protocol.parse(jsonObject.toJSONString());
             compile(new SpecificCompiler(protocol), sourceFile);
         } catch (IOException ex) {

@@ -166,7 +166,6 @@ public class FileUtils {
             jsonStr = sb.toString();
             return jsonStr;
         } catch (IOException e) {
-            e.printStackTrace();
             return null;
         }
     }

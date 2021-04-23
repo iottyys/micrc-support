@@ -33,4 +33,8 @@ public class Constants {
 
     public static final String PROTOCOL_SOURCE_PATH_KEY = "program";
     public static final String PROTOCOL_DEST_PATH_KEY = "feature";
+    public static final String MODULE_JSON_FILE_NAME = "module.json";
+    public static final String RELATION_JSON_FILE_NAME = "relation.json";
+    public static final String JAVA_ANNOTATION_KEY = "javaAnnotation";
+    public static final String TECHNOLOGY_KEY = "technology";
 }

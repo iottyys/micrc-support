@@ -1,3 +1,23 @@
+buildscript {
+    ext['groovy.version'] = '3.0.7'
+    ext {
+        ttttMessageVersion = '1.0.1.RELEASE'
+        groovyVersion = '3.0.7'
+        springBootVersion = '2.1.3.RELEASE'
+        springLoadedVersion = '1.2.6.RELEASE'
+    }
+    repositories {
+        mavenLocal()
+//        maven { url "http://nexus.wulinru.com:18081/repository/maven-public/" }
+        maven { url "http://maven.aliyun.com/nexus/content/groups/public/" }
+        maven { url "http://maven.jeecg.com:8090/nexus/content/repositories/jeecg" }
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+        classpath("org.springframework:springloaded:${springLoadedVersion}")
+    }
+}
 plugins {
     id 'java'
     id 'idea'
@@ -20,6 +40,7 @@ repositories {
 jar.enabled = true
 
 dependencies {
+    compile("org.springframework.boot:spring-boot-starter-web:${springBootVersion}")
 }
 
 uploadArchives {

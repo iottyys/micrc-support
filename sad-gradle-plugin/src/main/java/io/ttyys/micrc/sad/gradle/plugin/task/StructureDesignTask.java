@@ -35,7 +35,7 @@ import static io.ttyys.micrc.sad.gradle.plugin.common.Constants.PROTOCOL_EXTENSI
  * Task to convert Avro IDL files into Avro protocol files using {@link Idl}.
  */
 @CacheableTask
-public class StructureDesignAvroProtocolTask extends OutputDirTask {
+public class StructureDesignTask extends OutputDirTask {
 
     @TaskAction
     protected void process() {

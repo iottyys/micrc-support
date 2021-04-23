@@ -51,6 +51,7 @@ public class ClearAvroProtocolTask extends DefaultTask {
         } else {
             LOGGER.info("Skipped, not existing: {}", targetDir.getAbsolutePath());
         }
+        targetDir.mkdirs();
     }
 
     @Override

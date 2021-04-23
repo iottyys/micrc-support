@@ -18,6 +18,7 @@ ext {
     set('commonsIoVersion', '2.8.0')
     set('slf4jVersion', '1.7.30')
     set('fastjsonVersion', '1.2.76')
+    set('javapoetVersion', '1.13.0')
     set('micrcAnnotationVersion', '0.0.1-SNAPSHOT')
 }
 
@@ -40,6 +41,8 @@ dependencies {
     implementation "org.slf4j:slf4j-simple:${slf4jVersion}"
 
     implementation "io.ttyys.micrc:micrc-annotations:${micrcAnnotationVersion}"
+
+    compile("com.squareup:javapoet:${javapoetVersion}")
 }
 
 uploadArchives {

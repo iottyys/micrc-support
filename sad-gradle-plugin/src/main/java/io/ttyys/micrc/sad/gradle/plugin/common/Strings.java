@@ -46,4 +46,12 @@ public class Strings {
         }
         return str;
     }
+
+    public static String firstCharLower(String word) {
+        return word.substring(0, 1).toLowerCase() + word.substring(1);
+    }
+
+    public static String firstCharUpper(String word) {
+        return word.substring(0, 1).toUpperCase() + word.substring(1);
+    }
 }
