@@ -31,7 +31,7 @@ public class ClassGeneratedUtils {
             methodBuilder.addAnnotation(AnnotationSpec.builder(getTypeByStr(messageMeta.mapping())).addMember("value", "$S", messageMeta.url()).build());
             Class<?> returnClass = getTypeByStr(methodSymbol.getReturnType().toString());
             if (returnClass != void.class) {
-                methodBuilder.addStatement("return null");
+                methodBuilder.addStatement("return " + getDefaultValueByClass(returnClass));
             }
             methodBuilder.returns(returnClass);
             classBuild.addMethod(methodBuilder.build());
@@ -39,32 +39,65 @@ public class ClassGeneratedUtils {
         return JavaFile.builder(classSymbol.owner.toString() + ".impl", classBuild.build()).build();
     }
 
+    /**
+     * 构造类型对应的默认值字符串
+     * @param clazz 类型
+     * @return 默认值字符串
+     */
+    private static String getDefaultValueByClass(Class<?> clazz) {
+        String defaultValue = "";
+        if (boolean.class.equals(clazz)) {
+            defaultValue = "false";
+        } else if (char.class.equals(clazz)) {
+            defaultValue = "' '";
+        } else if (float.class.equals(clazz)) {
+            defaultValue = "0f";
+        } else if (double.class.equals(clazz)) {
+            defaultValue = "0D";
+        } else if (byte.class.equals(clazz) || short.class.equals(clazz) || int.class.equals(clazz)) {
+            defaultValue = "0";
+        } else if (long.class.equals(clazz)) {
+            defaultValue = "0L";
+        } else {
+            defaultValue = "null";
+        }
+        return defaultValue;
+    }
+    private short a() {
+        return 0;
+    }
+
+    /**
+     * 根据类型字符串获取类型
+     * @param typeStr 类型字符串
+     * @return 类型
+     */
     private static Class<?> getTypeByStr(String typeStr) {
         Class<?> clazz;
         switch (typeStr) {
             case "boolean":
-                clazz = Boolean.class;
+                clazz = boolean.class;
                 break;
             case "char":
-                clazz = Character.class;
+                clazz = char.class;
                 break;
             case "float":
-                clazz = Float.class;
+                clazz = float.class;
                 break;
             case "double":
-                clazz = Double.class;
+                clazz = double.class;
                 break;
             case "byte":
-                clazz = Byte.class;
+                clazz = byte.class;
                 break;
             case "short":
-                clazz = Short.class;
+                clazz = short.class;
                 break;
             case "int":
-                clazz = Integer.class;
+                clazz = int.class;
                 break;
             case "long":
-                clazz = Long.class;
+                clazz = long.class;
                 break;
             case "void":
                 clazz = void.class;

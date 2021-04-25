@@ -64,6 +64,8 @@ public class MetaProcessor extends AbstractProcessor {
             }
 
             return false;
+        } catch (IllegalArgumentException e) {
+            return false;
         } catch (Exception e) {
             throw new IllegalStateException("could not process algorithm sub. ", e);
         }
