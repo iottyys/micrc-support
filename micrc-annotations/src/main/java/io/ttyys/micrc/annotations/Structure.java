@@ -8,10 +8,11 @@ package io.ttyys.micrc.annotations;
  *   ├ model            对象
  *   └ repository       数据仓库
  * infrastructure   基础设施(领域外的各端口定义)
- *   ├ mybatis          mybatis的端口实现
+ *   ├ mybatis          mybatis的端口
  *   ├ messaged         监听消息端口
  *   ├ messaging        发送消息端口
- *   ├ api              接口提供端口
+ *   ├ api              Api端口
+ *   ├ called           接口提供端口
  *   └ calling          调用接口端口
  */
 
