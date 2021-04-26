@@ -21,7 +21,11 @@ package io.ttyys.micrc.annotations;
  */
 public @interface Structure {
     /**
-     * @return 相对于六边形架构根的包名
+     * @return 相对于六边形架构根的接口包名
      */
-    String value() default "";
+    String interfacePkg();
+    /**
+     * @return 相对于六边形架构根的实现包名
+     */
+    String implPkg();
 }

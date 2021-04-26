@@ -5,4 +5,8 @@ package io.ttyys.micrc.annotations.technology;
  */
 public @interface InformationProducer {
     String endpoint();
+    /**
+     * @return 实现类名称--不包含包结构
+     */
+    String adapterClassName();
 }
