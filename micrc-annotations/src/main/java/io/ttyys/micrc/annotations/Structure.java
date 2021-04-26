@@ -24,8 +24,14 @@ public @interface Structure {
      * @return 相对于六边形架构根的接口包名
      */
     String interfacePkg();
+
     /**
      * @return 相对于六边形架构根的实现包名
      */
     String implPkg();
+
+    /**
+     * @return 传输对象包(领域vo或者端口dto)
+     */
+    String objPkg();
 }

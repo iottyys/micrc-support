@@ -15,6 +15,7 @@
  */
 package io.ttyys.micrc.codegen.gradle.plugin.task;
 
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import io.ttyys.micrc.codegen.gradle.plugin.common.*;
 import io.ttyys.micrc.codegen.gradle.plugin.common.file.FileExtensionSpec;
@@ -44,6 +45,7 @@ import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -311,7 +313,8 @@ public class GenerateAvroJavaTask extends OutputDirTask {
         return processedFileCount;
     }
 
-    Pattern structureReg = Pattern.compile(".*Structure\\(\"(\\w+.\\w+)\"\\).*");
+    Pattern interfacePkgReg = Pattern.compile(".*interfacePkg=\"((\\w+.?)+)\".+");
+    Pattern objPkgReg = Pattern.compile(".+objPkg=\"((\\w+.?)+)\"\\).*");
 
     private void processProtoFile(File sourceFile) {
         getLogger().info("Processing {}", sourceFile);
@@ -320,12 +323,44 @@ public class GenerateAvroJavaTask extends OutputDirTask {
             JSONObject jsonObject = JSONObject.parseObject(protocol.toString(true));
             String javaAnnotation = protocol.getProp(Constants.JAVA_ANNOTATION_KEY);
             if (javaAnnotation != null) {
-                Matcher matcher = structureReg.matcher(javaAnnotation);
-                String pkg = protocol.getNamespace();
-                if (matcher.find()) {
-                    pkg += AvroUtils.NAMESPACE_SEPARATOR + matcher.group(1);
+                Matcher interfacePkgMatcher = interfacePkgReg.matcher(javaAnnotation);
+                Matcher objPkgMatcher = objPkgReg.matcher(javaAnnotation);
+                String basePkg = protocol.getNamespace();
+                String interfacePkg = basePkg;
+                String objPkg = basePkg;
+                if (interfacePkgMatcher.find()) {
+                    interfacePkg += AvroUtils.NAMESPACE_SEPARATOR + interfacePkgMatcher.group(1);
                 }
-                jsonObject.put("namespace", pkg);
+                if (objPkgMatcher.find()) {
+                    objPkg += AvroUtils.NAMESPACE_SEPARATOR + objPkgMatcher.group(1);
+                }
+                jsonObject.put("namespace", interfacePkg);
+                Map<String, String> typeNameMap = new HashMap<>(0);
+                JSONArray typeJsonArray = JSONObject.parseArray(protocol.getTypes().toString());
+                for (int i = 0, len = typeJsonArray.size(); i < len; i++) {
+                    JSONObject schemaJson = typeJsonArray.getJSONObject(i);
+                    schemaJson.put("namespace", objPkg);
+                    typeNameMap.put((String) schemaJson.get("name"), objPkg + Constants.NAMESPACE_SEPARATOR + schemaJson.get("name"));
+                }
+                jsonObject.put("types", typeJsonArray);
+
+                JSONObject messageJsonObject = new JSONObject();
+                for (Map.Entry<String, Protocol.Message> messageEntry : protocol.getMessages().entrySet()) {
+                    JSONObject messageJson = JSONObject.parseObject(messageEntry.getValue().toString());
+                    messageJsonObject.put(messageEntry.getKey(), messageJson);
+
+                    JSONArray requestParamJsonArray = messageJson.getJSONArray("request");
+                    for (int j = 0, jLen = requestParamJsonArray.size(); j < jLen; j++) {
+                        JSONObject requestParam = requestParamJsonArray.getJSONObject(j);
+                        if (typeNameMap.containsKey(requestParam.getString("type"))) {
+                            requestParam.put("type", typeNameMap.get(requestParam.getString("type")));
+                        }
+                    }
+                    if (typeNameMap.containsKey(messageJson.getString("response"))) {
+                        messageJson.put("response", typeNameMap.get(messageJson.getString("response")));
+                    }
+                }
+                jsonObject.put("messages", messageJsonObject);
             }
             protocol = Protocol.parse(jsonObject.toJSONString());
             compile(new SpecificCompiler(protocol), sourceFile);

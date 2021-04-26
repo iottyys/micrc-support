@@ -12,11 +12,6 @@ import java.util.List;
  */
 public class AvroUtils {
     /**
-     * The Unix separator.
-     */
-    public static final String UNIX_SEPARATOR = "/";
-
-    /**
      * Not intended for instantiation.
      */
     private AvroUtils() {
@@ -34,12 +29,12 @@ public class AvroUtils {
 //        parts.add(mainPath); // avro 主目录
         parts.add(serviceIntegrationPath.get()); // 功能设计目录
         String path = idlFile.getPath().split(mainPath)[1];
-        String[] pathArr = path.split(UNIX_SEPARATOR);
+        String[] pathArr = path.split(File.separator);
         parts.add(moduleDir == null ? pathArr[2] : moduleDir);  // 模块目录
         parts.add(pathArr[3]);  // 协议请求类别  同步请求  异步消息
         RequestEnum requestEnum = RequestEnum.valueOf(pathArr[3].toUpperCase());
         parts.add(def ? requestEnum.getDefDirName() : requestEnum.getTransferDirName());  // 定义协议 / 调用监听
         parts.add(idlFile.getName().replace(Constants.IDL_EXTENSION, Constants.PROTOCOL_EXTENSION));
-        return String.join(UNIX_SEPARATOR, parts);
+        return String.join(File.separator, parts);
     }
 }

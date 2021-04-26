@@ -32,6 +32,10 @@ import java.util.Map;
  * values that we want to match are still reproduced here.</p>
  */
 public class Constants {
+    /**
+     * The namespace separator.
+     */
+    public static final String NAMESPACE_SEPARATOR = ".";
     public static final String UTF8_ENCODING = "UTF-8";
 
     public static final String DEFAULT_STRING_TYPE = StringType.String.name();

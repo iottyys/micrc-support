@@ -16,6 +16,7 @@
 package io.ttyys.micrc.sad.gradle.plugin.task;
 
 import io.ttyys.micrc.sad.gradle.plugin.common.Constants;
+import io.ttyys.micrc.sad.gradle.plugin.common.RequestEnum;
 import io.ttyys.micrc.sad.gradle.plugin.common.file.FileExtensionSpec;
 import io.ttyys.micrc.sad.gradle.plugin.common.file.FileUtils;
 import org.apache.avro.Protocol;
@@ -23,20 +24,20 @@ import org.apache.avro.compiler.idl.Idl;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.specs.NotSpec;
-import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.TaskAction;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 
 import static io.ttyys.micrc.sad.gradle.plugin.common.Constants.PROTOCOL_EXTENSION;
 
 /**
  * Task to convert Avro IDL files into Avro protocol files using {@link Idl}.
  */
-@CacheableTask
 public class StructureDesignTask extends OutputDirTask {
-
+    private static final String Consumer_Annotation_Str = "io.ttyys.micrc.annotations.Structure(interfacePkg=\"infrastructure.%s\", implPkg=\"infrastructure.%s\", objPkg=\"infrastructure.dto\")";
+    private static final String Producer_Annotation_Str = "io.ttyys.micrc.annotations.Structure(interfacePkg=\"domain.service.%s\", implPkg=\"infrastructure.%s\", objPkg=\"domain.service.vo\")";
     @TaskAction
     protected void process() {
         getLogger().info("Found {} files", getSource().getFiles().size());
@@ -64,7 +65,14 @@ public class StructureDesignTask extends OutputDirTask {
     private void processProtocolFile(File sourceFile) {
         try {
             Protocol protocol = Protocol.parse(sourceFile);
-            String annotation = String.format("io.ttyys.micrc.annotations.Structure(\"infrastructure.%s\")", sourceFile.getParentFile().getName());
+//            String requestType = sourceFile.getParentFile().getParentFile().getName();  // local rpc msg
+            String activeState = sourceFile.getParentFile().getName(); // 主动 / 被动
+            String annotation;
+            if (Arrays.asList(RequestEnum.LOCAL.getDefDirName(), RequestEnum.INFORMATION.getDefDirName()).contains(activeState)) {
+                annotation = String.format(Consumer_Annotation_Str, activeState, activeState);
+            } else {
+                annotation = String.format(Producer_Annotation_Str, activeState, activeState);
+            }
             sourceFile.deleteOnExit();
             // 添加结构性注解
             protocol.addProp("javaAnnotation", annotation);
