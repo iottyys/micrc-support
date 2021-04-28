@@ -313,59 +313,92 @@ public class GenerateAvroJavaTask extends OutputDirTask {
         return processedFileCount;
     }
 
-    Pattern interfacePkgReg = Pattern.compile(".*interfacePkg=\"((\\w+.?)+)\".+");
-    Pattern objPkgReg = Pattern.compile(".+objPkg=\"((\\w+.?)+)\"\\).*");
-
     private void processProtoFile(File sourceFile) {
         getLogger().info("Processing {}", sourceFile);
         try {
             Protocol protocol = Protocol.parse(sourceFile);
             JSONObject jsonObject = JSONObject.parseObject(protocol.toString(true));
-            String javaAnnotation = protocol.getProp(Constants.JAVA_ANNOTATION_KEY);
-            if (javaAnnotation != null) {
-                Matcher interfacePkgMatcher = interfacePkgReg.matcher(javaAnnotation);
-                Matcher objPkgMatcher = objPkgReg.matcher(javaAnnotation);
-                String basePkg = protocol.getNamespace();
-                String interfacePkg = basePkg;
-                String objPkg = basePkg;
-                if (interfacePkgMatcher.find()) {
-                    interfacePkg += AvroUtils.NAMESPACE_SEPARATOR + interfacePkgMatcher.group(1);
-                }
-                if (objPkgMatcher.find()) {
-                    objPkg += AvroUtils.NAMESPACE_SEPARATOR + objPkgMatcher.group(1);
-                }
-                jsonObject.put("namespace", interfacePkg);
-                Map<String, String> typeNameMap = new HashMap<>(0);
-                JSONArray typeJsonArray = JSONObject.parseArray(protocol.getTypes().toString());
-                for (int i = 0, len = typeJsonArray.size(); i < len; i++) {
-                    JSONObject schemaJson = typeJsonArray.getJSONObject(i);
-                    schemaJson.put("namespace", objPkg);
-                    typeNameMap.put((String) schemaJson.get("name"), objPkg + Constants.NAMESPACE_SEPARATOR + schemaJson.get("name"));
-                }
-                jsonObject.put("types", typeJsonArray);
-
-                JSONObject messageJsonObject = new JSONObject();
-                for (Map.Entry<String, Protocol.Message> messageEntry : protocol.getMessages().entrySet()) {
-                    JSONObject messageJson = JSONObject.parseObject(messageEntry.getValue().toString());
-                    messageJsonObject.put(messageEntry.getKey(), messageJson);
-
-                    JSONArray requestParamJsonArray = messageJson.getJSONArray("request");
-                    for (int j = 0, jLen = requestParamJsonArray.size(); j < jLen; j++) {
-                        JSONObject requestParam = requestParamJsonArray.getJSONObject(j);
-                        if (typeNameMap.containsKey(requestParam.getString("type"))) {
-                            requestParam.put("type", typeNameMap.get(requestParam.getString("type")));
-                        }
-                    }
-                    if (typeNameMap.containsKey(messageJson.getString("response"))) {
-                        messageJson.put("response", typeNameMap.get(messageJson.getString("response")));
-                    }
-                }
-                jsonObject.put("messages", messageJsonObject);
-            }
+            dealStructure(jsonObject);
             protocol = Protocol.parse(jsonObject.toJSONString());
             compile(new SpecificCompiler(protocol), sourceFile);
         } catch (IOException ex) {
             throw new GradleException(String.format("Failed to compile protocol definition file %s", sourceFile), ex);
+        }
+    }
+
+    private static final Pattern interfacePkgReg = Pattern.compile(".*interfacePkg=\"((\\w+.?)+)\".+");
+    private static final Pattern objPkgReg = Pattern.compile(".+objPkg=\"((\\w+.?)+)\"\\).*");
+
+    private void dealStructure(JSONObject jsonObject) {
+        String javaAnnotationKey = "javaAnnotation";
+        String namespaceKey = "namespace";
+        String typesKey = "types";
+        String typeKey = "type";
+        String nameKey = "name";
+        String fieldsKey = "fields";
+        String messagesKey = "messages";
+        String requestKey = "request";
+        String responseKey = "response";
+        // 获取协议文件注解
+        String javaAnnotation = jsonObject.getString(javaAnnotationKey);
+        if (javaAnnotation != null) {
+            // 匹配/拼接 接口/对象 包配置
+            String interfacePkg = getPkg(jsonObject, javaAnnotation, true);
+            String objPkg = getPkg(jsonObject, javaAnnotation, false);
+            // 设置生成接口的包
+            jsonObject.put(namespaceKey, interfacePkg);
+            // 设置 出入参对象类 的包
+            Map<String, String> typeNameMap = new HashMap<>(0);
+            JSONArray typeJsonArray = JSONObject.parseArray(jsonObject.getString(typesKey));
+            for (int i = 0, len = typeJsonArray.size(); i < len; i++) {
+                JSONObject schemaJson = typeJsonArray.getJSONObject(i);
+                schemaJson.put(namespaceKey, objPkg);
+                typeNameMap.put((String) schemaJson.get(nameKey), objPkg + Constants.NAMESPACE_SEPARATOR + schemaJson.get(nameKey));
+            }
+            // FIXME zhaowang 以下所有类型中涉及到List集合包装类型的,需特殊处理
+            // 修复对象类中引用其他对象类
+            for (int i = 0, len = typeJsonArray.size(); i < len; i++) {
+                checkAndSetType(typeNameMap, typeJsonArray.getJSONObject(i).getJSONArray(fieldsKey), typeKey);
+            }
+            jsonObject.put(typesKey, typeJsonArray);
+
+            // 设置 方法中的出入参数对应的应用类
+            JSONObject messageJsonObject = jsonObject.getJSONObject(messagesKey);
+
+            for (String messageName : messageJsonObject.keySet()) {
+                JSONObject messageJson = messageJsonObject.getJSONObject(messageName);
+                checkAndSetType(typeNameMap, messageJson.getJSONArray(requestKey), typeKey);
+                checkAndReplaceValue(typeNameMap, messageJson, responseKey);
+            }
+            jsonObject.put(messagesKey, messageJsonObject);
+        }
+    }
+
+    private String getPkg(JSONObject jsonObject, String javaAnnotation, boolean isInterface) {
+        String namespaceKey = "namespace";
+        Matcher matcher = isInterface ? interfacePkgReg.matcher(javaAnnotation) : objPkgReg.matcher(javaAnnotation);
+        String pkg = jsonObject.getString(namespaceKey);
+        if (matcher.find()) {
+            pkg += AvroUtils.NAMESPACE_SEPARATOR + matcher.group(1);
+        }
+        return pkg;
+    }
+
+    private void checkAndSetType(Map<String, String> typeNameMap, JSONArray jsonArray, String key) {
+        for (int j = 0, jLen = jsonArray.size(); j < jLen; j++) {
+            JSONObject requestParam = jsonArray.getJSONObject(j);
+            checkAndReplaceValue(typeNameMap, requestParam, key);
+        }
+    }
+
+    private void checkAndReplaceValue(Map<String, String> typeNameMap, JSONObject json, String key) {
+        Object type = json.get(key);
+        if (type instanceof JSONObject) {
+            checkAndReplaceValue(typeNameMap, json.getJSONObject(key), "items");
+        } else {
+            if (typeNameMap.containsKey(json.getString(key))) {
+                json.put(key, typeNameMap.get(json.getString(key)));
+            }
         }
     }
 

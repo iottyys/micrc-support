@@ -2,6 +2,7 @@ package io.ttyys.micrc.processor;
 
 import com.squareup.javapoet.JavaFile;
 import com.sun.tools.javac.code.Symbol;
+import com.sun.tools.javac.model.JavacElements;
 import io.ttyys.micrc.annotations.logic.LogicCustom;
 import io.ttyys.micrc.annotations.logic.LogicDelegate;
 import io.ttyys.micrc.annotations.logic.LogicIntegration;
@@ -21,6 +22,10 @@ import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;
 import javax.tools.StandardLocation;
 import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -38,28 +43,33 @@ import java.util.stream.Collectors;
 public class ConsumerProcessor extends AbstractProcessor {
 
     private Filer filer;
+    private Path projectDir;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
         this.filer = processingEnv.getFiler();
+        this.projectDir = this.findDir();
     }
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment env) {
         try {
-
             List<AdapterClass> adapterClassList = interceptInterfaceAdapter(env);
             populateAdapterMessageList(env, adapterClassList);
-
-            String path = this.filer.getResource(StandardLocation.SOURCE_OUTPUT, "com", "szyk").toUri().getPath();
+// 若有自定义实现的逻辑把原有文件重命名备份,重新生成新文件
+            // 没有自定义实现逻辑的实现类,放在此源代码包
+            File annotationProcessMainFile = new File(projectDir.toFile(), "build/generated/sources/annotationProcessor/java/main");
+            // 有自定义实现逻辑的实现类,放在此源代码包
+            File srcMainFile = new File(projectDir.toFile(), "src/main/java");
             for (AdapterClass adapterClass : adapterClassList) {
                 JavaFile javaFile = ClassGeneratedUtils.generateJava(adapterClass);
-                javaFile.writeTo(new File(path));
+                if (adapterClass.isHasCustom()) {
+                    javaFile.writeTo(srcMainFile);
+                } else {
+                    javaFile.writeTo(annotationProcessMainFile);
+                }
             }
-
-            return false;
-        } catch (IllegalArgumentException e) {
             return false;
         } catch (Exception e) {
             throw new IllegalStateException("could not process algorithm sub. ", e);
@@ -86,7 +96,7 @@ public class ConsumerProcessor extends AbstractProcessor {
             Symbol.ClassSymbol classSymbol = (Symbol.ClassSymbol) element;
             AdapterClass adapterClass = new AdapterClass(classSymbol);
             adapterClass.setClassName(getAnnotationByInterface(classSymbol));
-            adapterClass.getAnnotationList().add(new AdapterAnnotation(org.springframework.stereotype.Component.class));
+            adapterClass.addAnnotation(new AdapterAnnotation(org.springframework.stereotype.Component.class));
             return adapterClass;
         }).collect(Collectors.toList());
     }
@@ -109,13 +119,12 @@ public class ConsumerProcessor extends AbstractProcessor {
             Symbol.MethodSymbol methodSymbol = ((Symbol.MethodSymbol) element);
             for (AdapterClass adapterClass : adapterClassList) {
                 if (adapterClass.getInterfaceName().toString().equals(methodSymbol.owner.toString())) {
-                    adapterClass.getMethodList().add(new AdapterMethod(methodSymbol));
+                    adapterClass.addMethod(new AdapterMethod(methodSymbol));
                     break;
                 }
             }
         });
     }
-
 
     private String getAnnotationByInterface(Symbol.ClassSymbol classSymbol) {
         String className;
@@ -143,5 +152,15 @@ public class ConsumerProcessor extends AbstractProcessor {
         processingEnv.getMessager().printMessage(
                 Diagnostic.Kind.ERROR,
                 String.format("only support interface with annotation @%S", args), e);
+    }
+
+    private Path findDir() {
+        String tmp = "tmp";
+        try {
+            URI uri = this.filer.getResource(StandardLocation.CLASS_OUTPUT, "", tmp).toUri();
+            return Paths.get(uri).getParent().getParent().getParent().getParent().getParent();
+        } catch (IOException e) {
+            throw new IllegalStateException("unable to find resources dir. ", e);
+        }
     }
 }

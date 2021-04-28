@@ -37,7 +37,7 @@ public class JCTools {
 
     public JCTree.JCVariableDecl createInstanceVar(JCTree.JCModifiers modifiers, String name, String type,
                                                    JCTree.JCNewClass init) {
-        return  maker.VarDef(
+        return maker.VarDef(
                 modifiers,
                 nameTable.fromString(name),
                 maker.Ident(nameTable.fromString(type)),
@@ -48,7 +48,7 @@ public class JCTools {
                                                    String newType,
                                                    List<JCTree.JCExpression> newParamTypes,
                                                    List<JCTree.JCExpression> newParamValues) {
-        return  maker.VarDef(
+        return maker.VarDef(
                 modifiers,
                 nameTable.fromString(name),
                 maker.Ident(nameTable.fromString(type)),

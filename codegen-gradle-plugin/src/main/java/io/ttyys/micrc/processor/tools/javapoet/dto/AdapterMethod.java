@@ -1,6 +1,9 @@
 package io.ttyys.micrc.processor.tools.javapoet.dto;
 
+import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.TypeName;
 import com.sun.tools.javac.code.Symbol;
+import io.ttyys.micrc.annotations.logic.LogicCustom;
 import io.ttyys.micrc.processor.tools.javapoet.ClassGeneratedUtils;
 
 import java.util.ArrayList;
@@ -11,19 +14,23 @@ import java.util.List;
  */
 public class AdapterMethod {
     private String name;
-    private List<AdapterAnnotation> annotationList = new ArrayList<>(0);
-    private List<AdapterMethodParam> paramList = new ArrayList<>(0);
-    private Class<?> returnClass;
+    private List<AdapterAnnotation> annotationList;
+    private List<AdapterMethodParam> paramList;
+    private TypeName returnClass;
     private String returnStatement;
 
     public AdapterMethod(Symbol.MethodSymbol methodSymbol) {
         name = methodSymbol.name.toString();
         for (Symbol.VarSymbol parameter : methodSymbol.getParameters()) {
-            paramList.add(new AdapterMethodParam(ClassGeneratedUtils.getTypeByStr(parameter.type.toString()), parameter.getSimpleName().toString()));
+            addParam(new AdapterMethodParam(ClassName.get(parameter.type), parameter.getSimpleName().toString()));
         }
-        annotationList.add(new AdapterAnnotation(java.lang.Override.class));
-        returnClass = ClassGeneratedUtils.getTypeByStr(methodSymbol.getReturnType().toString());
-        if (returnClass != void.class) {
+        LogicCustom logicCustom = methodSymbol.getAnnotation(LogicCustom.class);
+        if (logicCustom != null) {
+            addAnnotation(new AdapterAnnotation(LogicCustom.class));
+        }
+        addAnnotation(new AdapterAnnotation(Override.class));
+        returnClass = ClassName.get(methodSymbol.getReturnType());
+        if (returnClass != TypeName.VOID) {
             returnStatement = "return " + ClassGeneratedUtils.getDefaultValueByClass(returnClass);
         }
     }
@@ -37,7 +44,15 @@ public class AdapterMethod {
     }
 
     public List<AdapterMethodParam> getParamList() {
+        if (paramList == null) {
+            paramList = new ArrayList<>(0);
+        }
         return paramList;
+    }
+
+    public AdapterMethod addParam(AdapterMethodParam param) {
+        getParamList().add(param);
+        return this;
     }
 
     public void setParamList(List<AdapterMethodParam> paramList) {
@@ -45,18 +60,26 @@ public class AdapterMethod {
     }
 
     public List<AdapterAnnotation> getAnnotationList() {
+        if (annotationList == null) {
+            annotationList = new ArrayList<>(0);
+        }
         return annotationList;
+    }
+
+    public AdapterMethod addAnnotation(AdapterAnnotation annotation) {
+        getAnnotationList().add(annotation);
+        return this;
     }
 
     public void setAnnotationList(List<AdapterAnnotation> annotationList) {
         this.annotationList = annotationList;
     }
 
-    public Class<?> getReturnClass() {
+    public TypeName getReturnClass() {
         return returnClass;
     }
 
-    public void setReturnClass(Class<?> returnClass) {
+    public void setReturnClass(TypeName returnClass) {
         this.returnClass = returnClass;
     }
 

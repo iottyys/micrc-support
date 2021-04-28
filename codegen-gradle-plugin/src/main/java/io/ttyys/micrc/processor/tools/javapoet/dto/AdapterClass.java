@@ -3,7 +3,7 @@ package io.ttyys.micrc.processor.tools.javapoet.dto;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Type;
 import io.ttyys.micrc.annotations.Structure;
-import io.ttyys.micrc.codegen.gradle.plugin.common.Constants;
+import io.ttyys.micrc.annotations.logic.LogicCustom;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,8 +15,9 @@ public class AdapterClass {
     private String pkg;
     private Type interfaceName;
     private String className;
-    private List<AdapterAnnotation> annotationList = new ArrayList<>(0);
-    private List<AdapterMethod> methodList = new ArrayList<>(0);
+    private List<AdapterAnnotation> annotationList;
+    private List<AdapterMethod> methodList;
+    private boolean hasCustom = false;
 
     public AdapterClass(Symbol.ClassSymbol classSymbol) {
         Structure structure = classSymbol.getAnnotation(Structure.class);
@@ -49,6 +50,9 @@ public class AdapterClass {
     }
 
     public List<AdapterAnnotation> getAnnotationList() {
+        if (annotationList == null) {
+            annotationList = new ArrayList<>(0);
+        }
         return annotationList;
     }
 
@@ -57,10 +61,35 @@ public class AdapterClass {
     }
 
     public List<AdapterMethod> getMethodList() {
+        if (methodList == null) {
+            methodList = new ArrayList<>(0);
+        }
         return methodList;
     }
 
     public void setMethodList(List<AdapterMethod> methodList) {
         this.methodList = methodList;
+    }
+
+    public AdapterClass addAnnotation(AdapterAnnotation annotation) {
+        getAnnotationList().add(annotation);
+        return this;
+    }
+
+    public AdapterClass addMethod(AdapterMethod method) {
+        if (!hasCustom) {
+            for (AdapterAnnotation adapterAnnotation : method.getAnnotationList()) {
+                if (adapterAnnotation.getClazz() == LogicCustom.class) {
+                    hasCustom = true;
+                    break;
+                }
+            }
+        }
+        getMethodList().add(method);
+        return this;
+    }
+
+    public boolean isHasCustom() {
+        return hasCustom;
     }
 }

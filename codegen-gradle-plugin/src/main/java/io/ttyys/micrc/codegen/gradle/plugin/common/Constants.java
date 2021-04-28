@@ -56,7 +56,6 @@ public class Constants {
     public static final String GROUP_SOURCE_GENERATION = "Source Generation";
 
     public static final String AVRO_EXTENSION_NAME = "avro";
-    public static final String JAVA_ANNOTATION_KEY = "javaAnnotation";
     public static final String SCHEMA_DESIGN_EXTENSION_NAME = "codegen";
 
     public static final String OPTION_FIELD_VISIBILITY = "fieldVisibility";

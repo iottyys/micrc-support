@@ -1,9 +1,6 @@
 package io.ttyys.micrc.processor.tools.javapoet;
 
-import com.squareup.javapoet.AnnotationSpec;
-import com.squareup.javapoet.JavaFile;
-import com.squareup.javapoet.MethodSpec;
-import com.squareup.javapoet.TypeSpec;
+import com.squareup.javapoet.*;
 import io.ttyys.micrc.processor.tools.javapoet.dto.AdapterAnnotation;
 import io.ttyys.micrc.processor.tools.javapoet.dto.AdapterClass;
 import io.ttyys.micrc.processor.tools.javapoet.dto.AdapterMethod;
@@ -54,11 +51,10 @@ public class ClassGeneratedUtils {
             // 方法注解列表
             methodBuilder.addAnnotations(createAnnotationList(adapterMethod.getAnnotationList()));
             // 方法返回值
-            Class<?> returnClass = adapterMethod.getReturnClass();
-            if (returnClass != void.class) {
+            methodBuilder.returns(adapterMethod.getReturnClass());
+            if (adapterMethod.getReturnStatement() != null) {
                 methodBuilder.addStatement(adapterMethod.getReturnStatement());
             }
-            methodBuilder.returns(returnClass);
             methodSpecList.add(methodBuilder.build());
         }
         return methodSpecList;
@@ -91,19 +87,19 @@ public class ClassGeneratedUtils {
      * @param clazz 类型
      * @return 默认值字符串
      */
-    public static String getDefaultValueByClass(Class<?> clazz) {
+    public static String getDefaultValueByClass(TypeName clazz) {
         String defaultValue = "";
-        if (boolean.class.equals(clazz)) {
+        if (TypeName.BOOLEAN.equals(clazz)) {
             defaultValue = "false";
-        } else if (char.class.equals(clazz)) {
+        } else if (TypeName.CHAR.equals(clazz)) {
             defaultValue = "' '";
-        } else if (float.class.equals(clazz)) {
+        } else if (TypeName.FLOAT.equals(clazz)) {
             defaultValue = "0f";
-        } else if (double.class.equals(clazz)) {
+        } else if (TypeName.DOUBLE.equals(clazz)) {
             defaultValue = "0D";
-        } else if (byte.class.equals(clazz) || short.class.equals(clazz) || int.class.equals(clazz)) {
+        } else if (TypeName.BYTE.equals(clazz) || TypeName.SHORT.equals(clazz) || TypeName.INT.equals(clazz)) {
             defaultValue = "0";
-        } else if (long.class.equals(clazz)) {
+        } else if (TypeName.LONG.equals(clazz)) {
             defaultValue = "0L";
         } else {
             defaultValue = "null";

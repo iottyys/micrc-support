@@ -110,7 +110,7 @@ public class FileUtils {
      * @param file     the file to write
      * @param data     the content to write to the file
      * @param encoding the encoding to use, <code>null</code> means platform default
-     * @throws IOException                          in case of an I/O error
+     * @throws IOException                  in case of an I/O error
      * @throws UnsupportedEncodingException if the encoding is not supported by the VM
      */
     @SuppressWarnings("SameParameterValue")
