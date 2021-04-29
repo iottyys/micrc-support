@@ -1,6 +1,10 @@
 plugins {
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+    id 'groovy'
     id 'java'
     id 'idea'
+    id 'maven'
 }
 
 group 'io.ttyys.micrc'
@@ -9,15 +13,47 @@ sourceCompatibility = '1.8'
 targetCompatibility = '1.8'
 
 ext {
+    set('groovyVersion', '2.4.15')
+    set('camelVersion', '3.9.0')
 }
 
 repositories {
+    maven { url "file://" + new File("../../repo").getAbsolutePath() }
     mavenLocal()
     mavenCentral()
 }
 
 jar.enabled = true
+bootJar.enabled = false
+
+dependencyManagement {
+    imports {
+        mavenBom "org.apache.camel.springboot:camel-spring-boot-dependencies:${camelVersion}"
+    }
+}
+
+uploadArchives {
+    repositories {
+        /**配置Maven部署器，将工件上传到本地目录，这里是放到与该项目同级目录的repo目录下*/
+        mavenDeployer {
+            repository(url: "file://" + new File("../../repo").getAbsolutePath())
+        }
+    }
+}
+
 
 dependencies {
+
+    implementation "io.ttyys.micrc:micrc-annotations:0.0.1-SNAPSHOT"
+
+    annotationProcessor "org.springframework.boot:spring-boot-configuration-processor"
+    compileOnly "org.springframework.boot:spring-boot-starter-aop"
+    testImplementation "org.springframework.boot:spring-boot-starter-aop"
+
+    // for camel
+    implementation "org.apache.camel.springboot:camel-spring-boot-starter"
+    implementation "org.apache.camel.springboot:camel-bean-starter"
+    testImplementation "org.apache.camel:camel-test-spring-junit5"
+    implementation "org.apache.camel:camel-avro:${camelVersion}"
 }
 

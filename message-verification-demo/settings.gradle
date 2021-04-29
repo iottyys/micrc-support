@@ -1,0 +1,12 @@
+pluginManagement {
+    plugins {
+        id 'org.springframework.boot' version '2.3.8.RELEASE'
+        id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+        id 'com.palantir.docker' version '0.25.0'
+    }
+}
+
+rootProject.name = 'message-verification-demo'
+
+include 'micrc-core'
+project(':micrc-core').projectDir = file('../micrc-core')

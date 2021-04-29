@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: atomic-service-demo
+  cloud:
+    kubernetes:
+      config:
+        enabled: false
+        sources:
+          - name: config

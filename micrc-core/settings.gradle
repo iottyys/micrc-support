@@ -1,0 +1,9 @@
+pluginManagement {
+    plugins {
+        id 'org.springframework.boot' version '2.3.8.RELEASE'
+        id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+        id "com.google.protobuf" version "0.8.15"
+    }
+}
+
+rootProject.name = 'micrc-core'
