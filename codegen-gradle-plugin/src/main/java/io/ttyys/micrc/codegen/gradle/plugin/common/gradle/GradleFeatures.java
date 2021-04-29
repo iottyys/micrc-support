@@ -39,6 +39,7 @@ enum GradleFeatures {
     };
 
     abstract boolean isSupportedBy(GradleVersion version);
+
     boolean isSupported() {
         return isSupportedBy(GradleVersion.current());
     }

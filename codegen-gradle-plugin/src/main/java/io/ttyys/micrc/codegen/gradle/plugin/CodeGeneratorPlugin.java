@@ -1,6 +1,5 @@
 package io.ttyys.micrc.codegen.gradle.plugin;
 
-import io.ttyys.micrc.codegen.gradle.plugin.common.AvroUtils;
 import io.ttyys.micrc.codegen.gradle.plugin.common.Constants;
 import io.ttyys.micrc.codegen.gradle.plugin.common.ProjectUtils;
 import io.ttyys.micrc.codegen.gradle.plugin.common.SetBuilder;
@@ -12,10 +11,11 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.file.Directory;
-import org.gradle.api.internal.tasks.DefaultSourceSet;
-import org.gradle.api.plugins.ExtensionContainer;
 import org.gradle.api.plugins.JavaPlugin;
-import org.gradle.api.tasks.*;
+import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.SourceTask;
+import org.gradle.api.tasks.TaskContainer;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.plugins.ide.idea.GenerateIdeaModule;
 import org.gradle.plugins.ide.idea.IdeaPlugin;

@@ -32,6 +32,10 @@ import java.util.Map;
  * values that we want to match are still reproduced here.</p>
  */
 public class Constants {
+    /**
+     * The namespace separator.
+     */
+    public static final String NAMESPACE_SEPARATOR = ".";
     public static final String UTF8_ENCODING = "UTF-8";
 
     public static final String DEFAULT_STRING_TYPE = StringType.String.name();
@@ -52,7 +56,6 @@ public class Constants {
     public static final String GROUP_SOURCE_GENERATION = "Source Generation";
 
     public static final String AVRO_EXTENSION_NAME = "avro";
-    public static final String JAVA_ANNOTATION_KEY = "javaAnnotation";
     public static final String SCHEMA_DESIGN_EXTENSION_NAME = "codegen";
 
     public static final String OPTION_FIELD_VISIBILITY = "fieldVisibility";

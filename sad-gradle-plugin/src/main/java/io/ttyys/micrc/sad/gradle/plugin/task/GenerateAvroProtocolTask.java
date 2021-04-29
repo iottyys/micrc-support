@@ -113,18 +113,21 @@ public class GenerateAvroProtocolTask extends OutputDirTask {
             FileUtils.writeJsonFile(protoFile, protoJson);
             getLogger().debug("写入协议定义 {}", protoFile.getPath());
 
-            String jsonStr = FileUtils.readJsonString(idlFile.getParent() + File.separator + Constants.RELATION_JSON_FILE_NAME);
-            JSONObject jsonObject = JSONObject.parseObject(jsonStr);
-            List<String> relationArray = jsonObject.getJSONArray(idlFile.getName().substring(0, idlFile.getName().length() - 1 - IDL_EXTENSION.length())).toJavaList(String.class);
-            for (String moduleDir : relationArray) {
-                path = AvroUtils.assemblePath(idlFile, srcDirPath, false, moduleDir, destPath);
-                protoFile = new File(srcDir, path);
-                FileUtils.writeJsonFile(protoFile, protoJson);
-                getLogger().debug("写入协议 调用/监听 {}", protoFile.getPath());
-            }
-
+            dealRelation(idlFile, protoJson, srcDirPath, srcDir);
         } catch (IOException | ParseException ex) {
             throw new GradleException(String.format("Failed to compile IDL file %s", idlFile), ex);
+        }
+    }
+
+    private void dealRelation(File idlFile, String protoJson, String srcDirPath, File srcDir) throws IOException {
+        String jsonStr = FileUtils.readJsonString(idlFile.getParent() + File.separator + Constants.RELATION_JSON_FILE_NAME);
+        JSONObject jsonObject = JSONObject.parseObject(jsonStr);
+        List<String> relationArray = jsonObject.getJSONArray(idlFile.getName().substring(0, idlFile.getName().length() - 1 - IDL_EXTENSION.length())).toJavaList(String.class);
+        for (String moduleDir : relationArray) {
+            String path = AvroUtils.assemblePath(idlFile, srcDirPath, false, moduleDir, destPath);
+            File protoFile = new File(srcDir, path);
+            FileUtils.writeJsonFile(protoFile, protoJson);
+            getLogger().debug("写入协议 调用/监听 {}", protoFile.getPath());
         }
     }
 

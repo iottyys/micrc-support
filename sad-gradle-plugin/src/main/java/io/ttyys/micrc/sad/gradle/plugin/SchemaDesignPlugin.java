@@ -64,7 +64,7 @@ public class SchemaDesignPlugin implements Plugin<Project> {
         return project.getTasks().register(taskName, GenerateAvroProtocolTask.class, task -> {
             task.setDescription(
                     String.format("Generates %s Avro protocol definition files from IDL files.", sourceSet.getName()));
-//            task.source(clearTaskProvider);
+            task.source(clearTaskProvider);
             task.source(ProjectUtils.getAvroSourceDir(project, sourceSet));
             task.include("**/*." + Constants.IDL_EXTENSION);
             task.setClasspath(project.getConfigurations().getByName(RUNTIME_CLASSPATH_CONFIGURATION_NAME));

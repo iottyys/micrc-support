@@ -17,7 +17,6 @@ package io.ttyys.micrc.sad.gradle.plugin.task;
 
 import com.alibaba.fastjson.JSONObject;
 import io.ttyys.micrc.sad.gradle.plugin.common.Constants;
-import io.ttyys.micrc.sad.gradle.plugin.common.Strings;
 import io.ttyys.micrc.sad.gradle.plugin.common.file.FileExtensionSpec;
 import io.ttyys.micrc.sad.gradle.plugin.common.file.FileUtils;
 import io.ttyys.micrc.sad.gradle.plugin.common.file.FilenameUtils;
@@ -27,12 +26,12 @@ import org.gradle.api.file.FileCollection;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.specs.NotSpec;
-import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.TaskAction;
 
 import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -41,7 +40,6 @@ import static io.ttyys.micrc.sad.gradle.plugin.common.Constants.PROTOCOL_EXTENSI
 /**
  * 技术设计
  */
-@CacheableTask
 public class TechnologyDesignTask extends OutputDirTask {
 
     private Map<String, JSONObject> moduleMap = new HashMap<>(0);
@@ -93,29 +91,23 @@ public class TechnologyDesignTask extends OutputDirTask {
 
     private void processProtocolFile(File sourceFile) {
         try {
-            JSONObject moduleJson = getModuleJson(sourceFile);
-            if (moduleJson != null) {
-                TechnologyType technologyType = TechnologyType.valueOf(moduleJson.getString(Constants.TECHNOLOGY_KEY));
-                Protocol protocol = Protocol.parse(sourceFile);
-                sourceFile.deleteOnExit();
-                // 添加注解  FIXME 没找到多注解的处理方案,暂时先用@拼接
-                String annotation = protocol.getProp(Constants.JAVA_ANNOTATION_KEY);
-                annotation = annotation == null ? "" : (annotation + '@');
-                annotation += String.format(technologyType.typeAnnotation, Strings.firstCharLower(FilenameUtils.removeExtension(sourceFile.getName())));
-//                protocol.addProp(Constants.JAVA_ANNOTATION_KEY, annotation);
-                Map<String, Protocol.Message> messageMap = protocol.getMessages();
-                messageMap.forEach((key, value) -> {
-                    String messageAnnotation = value.getProp(Constants.JAVA_ANNOTATION_KEY);
-                    messageAnnotation = messageAnnotation == null ? "" : (messageAnnotation + '@');
-                    messageAnnotation += String.format(technologyType.messageAnnotation, Strings.firstCharLower(key));
-                    value.addProp(Constants.JAVA_ANNOTATION_KEY, messageAnnotation);
-                });
-                String protoJson = protocol.toString(true);
-                JSONObject jsonObject = JSONObject.parseObject(protoJson);
-                jsonObject.put(Constants.JAVA_ANNOTATION_KEY, annotation);
-                FileUtils.writeJsonFile(sourceFile, Protocol.parse(jsonObject.toJSONString()).toString(true));
-                getLogger().debug("协议添加结构注解完成 {}", sourceFile.getPath());
-            }
+
+            String requestType = sourceFile.getParentFile().getParentFile().getName();  // local rpc msg
+            String activeState = sourceFile.getParentFile().getName(); // 主动 / 被动
+            TechnologyType technologyType = TechnologyType.valueOf(requestType);
+            Protocol protocol = Protocol.parse(sourceFile);
+            sourceFile.deleteOnExit();
+            // 添加注解  FIXME 没找到多注解的处理方案,暂时先用@拼接
+            String annotation = protocol.getProp(Constants.JAVA_ANNOTATION_KEY);
+            annotation = annotation == null ? "" : (annotation + '@');
+            annotation += technologyType.getAnnotation(activeState,
+                    FilenameUtils.getEndpointByProtocolFile(sourceFile),
+                    FilenameUtils.removeExtension(sourceFile.getName()) + "Adapter");
+            String protoJson = protocol.toString(true);
+            JSONObject jsonObject = JSONObject.parseObject(protoJson);
+            jsonObject.put(Constants.JAVA_ANNOTATION_KEY, annotation);
+            FileUtils.writeJsonFile(sourceFile, Protocol.parse(jsonObject.toJSONString()).toString(true));
+            getLogger().debug("协议添加结构注解完成 {}", sourceFile.getPath());
         } catch (IOException ex) {
             throw new GradleException(String.format("Failed to process protocol definition file %s", sourceFile), ex);
         }
@@ -149,18 +141,32 @@ public class TechnologyDesignTask extends OutputDirTask {
     }
 
     enum TechnologyType {
-        SpringMVC(
-                "io.ttyys.micrc.annotations.TypeMeta(value=\"org.springframework.web.bind.annotation.RestController\",mapping=\"org.springframework.web.bind.annotation.RequestMapping\",url=\"%s\")",
-                "io.ttyys.micrc.annotations.MessageMeta(value=io.ttyys.micrc.annotations.MessageMeta.ImplType.CUSTOM,mapping=\"org.springframework.web.bind.annotation.GetMapping\",url=\"%s\")"
-        ),
+        local("LocalTransfer"),
+        rpc("RpcTransfer"),
+        msg("Information"),
         ;
-        private String typeAnnotation;
-        private String messageAnnotation;
+        private String type;
 
-        TechnologyType(String typeAnnotation, String messageAnnotation) {
-            this.typeAnnotation = typeAnnotation;
-            this.messageAnnotation = messageAnnotation;
+        TechnologyType(String type) {
+            this.type = type;
+        }
+
+        public String getAnnotation(String activeState, String endpoint, String implClassName) {
+            if (Arrays.asList("called", "messaged").contains(activeState)) {
+                return getConsumerAnnotation(endpoint, implClassName);
+            } else {
+                return getProducerAnnotation(endpoint, implClassName);
+            }
+        }
+
+        private String getConsumerAnnotation(String endpoint, String implClassName) {
+            String consumerAnnotationFmt = "io.ttyys.micrc.annotations.technology.%sConsumer(endpoint=\"%s\", adapterClassName=\"%s\")";
+            return String.format(consumerAnnotationFmt, type, endpoint, implClassName);
+        }
+
+        private String getProducerAnnotation(String endpoint, String implClassName) {
+            String producerAnnotationFmt = "io.ttyys.micrc.annotations.technology.%sProducer(endpoint=\"%s\", adapterClassName=\"%s\")";
+            return String.format(producerAnnotationFmt, type, endpoint, implClassName);
         }
     }
-
 }

@@ -71,8 +71,8 @@ public class SchemaResolver {
                 String typeName = duplicateTypeMatcher.group(1);
                 if (fileState.containsDuplicateTypeName(typeName)) {
                     throw new GradleException(
-                        String.format("Failed to resolve schema definition file %s; contains duplicate type definition %s", path, typeName),
-                        ex);
+                            String.format("Failed to resolve schema definition file %s; contains duplicate type definition %s", path, typeName),
+                            ex);
                 } else {
                     fileState.setError(ex);
                     fileState.addDuplicateTypeName(typeName);
