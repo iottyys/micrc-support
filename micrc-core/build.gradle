@@ -55,5 +55,9 @@ dependencies {
     implementation "org.apache.camel.springboot:camel-bean-starter"
     testImplementation "org.apache.camel:camel-test-spring-junit5"
     implementation "org.apache.camel:camel-avro:${camelVersion}"
+
+    // for lombok
+    compileOnly "org.projectlombok:lombok"
+    annotationProcessor "org.projectlombok:lombok"
 }
 

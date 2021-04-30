@@ -23,6 +23,7 @@ public class LocalConsumerRouteTemplate extends RouteBuilder {
         routeTemplate("localConsumerRouteTemplate")
                 .templateParameter("endpoint")
                 .templateParameter("adapterClassName")
+                .templateParameter("methodSignature")
                 .from("direct:{{endpoint}}").unmarshal()
                 .avro()// 这一步要拿Avro里的那个数据传输对象的class
                 .setBody(simple("${body}"))
