@@ -3,6 +3,8 @@ buildscript {
         /**指定本地maven仓库*/
         maven { url "file://" + new File("../../repo").absolutePath }
         mavenLocal()
+        maven { url "http://maven.aliyun.com/nexus/content/groups/public/" }
+        maven { url "http://maven.jeecg.com:8090/nexus/content/repositories/jeecg" }
         mavenCentral()
     }
 
