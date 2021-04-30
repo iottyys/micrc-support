@@ -1,0 +1,54 @@
+
+buildscript {
+    repositories {
+        /**指定本地maven仓库*/
+        maven { url "file://" + new File("../../repo").getAbsolutePath() }
+        mavenLocal()
+        mavenCentral()
+    }
+
+    dependencies {
+        /**构建脚本并不知道外部插件的存在，除非将插件添加到 classpath*/
+        classpath 'io.ttyys.micrc:codegen-gradle-plugin:0.0.1-SNAPSHOT'
+    }
+}
+
+description = 'auth'
+
+apply plugin: 'groovy'
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+apply plugin: 'io.ttyys.gradle.codegen.codegen-gradle-plugin'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+jar.enabled = true
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+idea {
+    module {
+        inheritOutputDirs = false
+        outputDir = file("$buildDir/classes/main/")
+    }
+}
+
+sourceSets {
+    main.java.srcDirs = ['src/main/java']
+    main.java.excludes = ['**/package-info.java']
+    main.resources.srcDirs = ['src/main/resources']
+}
+repositories {
+    /**指定本地maven仓库*/
+    maven { url "file://" + new File("../../repo").getAbsolutePath() }
+    mavenLocal()
+    mavenCentral()
+}
+
+codegen {
+    resourceAvroDirPath = "../src/main/avro/feature"
+}
