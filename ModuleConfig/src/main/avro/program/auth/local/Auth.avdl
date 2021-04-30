@@ -1,0 +1,5 @@
+@namespace("com.szyk.tnmy")
+protocol Auth {
+  @javaAnnotation("io.ttyys.micrc.annotations.logic.LogicCustom")
+  string exec(string username, string pwd);
+}

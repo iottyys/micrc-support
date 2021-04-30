@@ -1,0 +1,13 @@
+@namespace("com.szyk.tnmy")
+protocol QueryOrderPage {
+  record Order {
+    string orderNo;
+  }
+
+  record Page {
+    int total;
+    @java-class("java.util.List") array<Order> records;
+  }
+  @javaAnnotation("io.ttyys.micrc.annotations.logic.LogicCustom")
+  Page exec();
+}

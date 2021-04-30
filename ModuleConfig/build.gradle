@@ -1,0 +1,53 @@
+buildscript {
+    repositories {
+        /**指定本地maven仓库*/
+        maven { url "file://" + new File("../repo").absolutePath }
+        mavenLocal()
+        mavenCentral()
+    }
+
+    dependencies {
+        /**构建脚本并不知道外部插件的存在，除非将插件添加到 classpath*/
+        classpath 'io.ttyys.micrc:sad-gradle-plugin:0.0.1-SNAPSHOT'
+    }
+}
+
+plugins {
+    id 'groovy'
+    id 'java'
+    id 'eclipse'
+    id 'idea'
+}
+
+apply plugin: 'io.ttyys.gradle.sad.sad-gradle-plugin'
+
+description = 'ModuleConfig'
+group 'com.szyk'
+version '0.0.1'
+
+ext {
+    set('avroVersion', '1.10.2')
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+jar.enabled = true
+
+sourceSets {
+    main.resources.srcDirs = ['src/main/avro']
+}
+
+dependencies {
+    compile "org.apache.avro:avro-compiler:${avroVersion}"
+    compile "org.apache.avro:avro-ipc:${avroVersion}"
+}

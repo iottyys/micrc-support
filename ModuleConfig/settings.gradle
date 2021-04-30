@@ -1,0 +1,3 @@
+rootProject.name = 'ModuleConfig'
+
+include 'auth', 'product', 'order', 'uc'

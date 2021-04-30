@@ -2,13 +2,13 @@ package io.ttyys.micrc.processor;
 
 import com.squareup.javapoet.JavaFile;
 import com.sun.tools.javac.code.Symbol;
-import com.sun.tools.javac.model.JavacElements;
 import io.ttyys.micrc.annotations.logic.LogicCustom;
 import io.ttyys.micrc.annotations.logic.LogicDelegate;
 import io.ttyys.micrc.annotations.logic.LogicIntegration;
 import io.ttyys.micrc.annotations.technology.InformationConsumer;
 import io.ttyys.micrc.annotations.technology.LocalTransferConsumer;
 import io.ttyys.micrc.annotations.technology.RpcTransferConsumer;
+import io.ttyys.micrc.codegen.gradle.plugin.common.Constants;
 import io.ttyys.micrc.processor.tools.javapoet.ClassGeneratedUtils;
 import io.ttyys.micrc.processor.tools.javapoet.dto.AdapterAnnotation;
 import io.ttyys.micrc.processor.tools.javapoet.dto.AdapterClass;
@@ -26,6 +26,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -44,6 +46,7 @@ public class ConsumerProcessor extends AbstractProcessor {
 
     private Filer filer;
     private Path projectDir;
+    private static final SimpleDateFormat format = new SimpleDateFormat("yyyyMMddHHmmss");
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -57,7 +60,6 @@ public class ConsumerProcessor extends AbstractProcessor {
         try {
             List<AdapterClass> adapterClassList = interceptInterfaceAdapter(env);
             populateAdapterMessageList(env, adapterClassList);
-// 若有自定义实现的逻辑把原有文件重命名备份,重新生成新文件
             // 没有自定义实现逻辑的实现类,放在此源代码包
             File annotationProcessMainFile = new File(projectDir.toFile(), "build/generated/sources/annotationProcessor/java/main");
             // 有自定义实现逻辑的实现类,放在此源代码包
@@ -65,7 +67,7 @@ public class ConsumerProcessor extends AbstractProcessor {
             for (AdapterClass adapterClass : adapterClassList) {
                 JavaFile javaFile = ClassGeneratedUtils.generateJava(adapterClass);
                 if (adapterClass.isHasCustom()) {
-                    javaFile.writeTo(srcMainFile);
+                    existsJava(srcMainFile, javaFile);
                 } else {
                     javaFile.writeTo(annotationProcessMainFile);
                 }
@@ -74,6 +76,19 @@ public class ConsumerProcessor extends AbstractProcessor {
         } catch (Exception e) {
             throw new IllegalStateException("could not process algorithm sub. ", e);
         }
+    }
+
+    private void existsJava(File path, JavaFile javaFile) throws IOException {
+        String javaPath = javaFile.packageName.replaceAll("\\.", File.separator) + File.separator;
+        String fileName = javaFile.typeSpec.name + Constants.NAMESPACE_SEPARATOR + Constants.JAVA_EXTENSION_NAME;
+        File oldJavaFile = new File(path, javaPath + fileName);
+        // 若有自定义实现的逻辑把原有文件重命名备份,重新生成新文件
+        if (oldJavaFile.exists()) {
+            String newFileName = javaFile.typeSpec.name + format.format(new Date()) + Constants.NAMESPACE_SEPARATOR + Constants.TXT_EXTENSION_NAME;
+            //noinspection ResultOfMethodCallIgnored
+            oldJavaFile.renameTo(new File(path, javaPath + newFileName));
+        }
+        javaFile.writeTo(path);
     }
 
     /**
