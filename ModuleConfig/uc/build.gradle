@@ -2,7 +2,7 @@
 buildscript {
     repositories {
         /**指定本地maven仓库*/
-        maven { url "file://" + new File("/media/zhaowang/Works/work/WorkSpace/snszyk-projects/workspace/platform/repo").getAbsolutePath() }
+        maven { url "file://" + new File("../../repo").getAbsolutePath() }
         mavenLocal()
         mavenCentral()
     }
@@ -44,7 +44,7 @@ sourceSets {
 }
 repositories {
     /**指定本地maven仓库*/
-    maven { url "file://" + new File("/media/zhaowang/Works/work/WorkSpace/snszyk-projects/workspace/platform/repo").getAbsolutePath() }
+    maven { url "file://" + new File("../../repo").getAbsolutePath() }
     mavenLocal()
     mavenCentral()
 }
