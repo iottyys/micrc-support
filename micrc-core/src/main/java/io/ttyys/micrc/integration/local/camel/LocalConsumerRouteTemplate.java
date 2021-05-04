@@ -20,6 +20,7 @@ public class LocalConsumerRouteTemplate extends RouteBuilder {
                 .routeId("consumer-{{adapterClassName}}")
                 .unmarshal().json()
                 .setBody(simple("${body}"))
+                // .bean("#{{adapterClassName}}", "-D${headers.methodName}(${body})")
                 .bean("#{{adapterClassName}}", "-D${headers.methodName}")
                 .log("${body}")
                 .log("${headers.methodName}");

@@ -20,9 +20,14 @@ interface LocalMessageConsumer1 {
     User setUser(User user)
 }
 
-@Component
+@Component("LocalMessageConsumer")
 @Slf4j
 class LocalMessageConsumerImpl implements LocalMessageConsumer{
+
+    LocalMessageConsumerImpl(){
+        println "i init"
+    }
+
 
     @Override
     String getUserName(String userId) {
@@ -37,9 +42,13 @@ class LocalMessageConsumerImpl implements LocalMessageConsumer{
     }
 }
 
-@Component
+@Component("LocalMessageConsumer1")
 @Slf4j
 class LocalMessageConsumer1Impl implements LocalMessageConsumer1{
+
+    LocalMessageConsumer1Impl(){
+        println "i init"
+    }
 
     @Override
     String getAge() {

@@ -20,6 +20,12 @@ class LocalProducerTest {
     @Autowired
     LocalMessageProducer1 localMessageProducer1
 
+    @Autowired
+    LocalMessageConsumer localMessageConsumer
+
+    @Autowired
+    LocalMessageConsumer1 localMessageConsumer1
+
     @Test
     void producer() {
         localMessageProducer.setUserPassword(123456)
