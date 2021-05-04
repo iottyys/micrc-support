@@ -1,6 +1,8 @@
 package io.ttyys.micrc.integration.local.springboot;
 
 import io.ttyys.micrc.integration.local.camel.LocalConsumerRouteTemplate;
+import io.ttyys.micrc.integration.local.camel.LocalMessageRouterBuilder;
+import io.ttyys.micrc.integration.local.camel.LocalProducerRouteTemplate;
 import org.springframework.context.annotation.Import;
 
 import java.lang.annotation.*;
@@ -17,7 +19,10 @@ import java.lang.annotation.*;
 @Documented
 @Import({
         ClassPathLocalConsumerScannerRegistrar.class,
-        LocalConsumerRouteTemplate.class
+        LocalConsumerRouteTemplate.class,
+        ClassPathLocalProducerScannerRegistrar.class,
+        LocalProducerRouteTemplate.class,
+        LocalMessageRouterBuilder.class
 })
 public @interface EnableLocalMessageSupport {
 

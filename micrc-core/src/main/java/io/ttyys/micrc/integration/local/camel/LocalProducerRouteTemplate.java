@@ -13,14 +13,16 @@ public class LocalProducerRouteTemplate extends RouteBuilder {
 
     @Override
     public void configure() throws Exception {
+        // 这个路由里是要将
+
         routeTemplate("localProducerRouteTemplate")
                 .templateParameter("endpoint")
+                .templateParameter("beanClassName")
                 .templateParameter("adapterClassName")
-                .templateParameter("method")
-                .from("{{endpoint}}{{method}}").marshal()
-                .avro()// 这一步要拿Avro里的那个数据传输对象的class
+                .from("direct:{{beanClassName}}")
+                .routeId("producer-{{beanClassName}}")
+                .marshal().json()
                 .setBody(simple("${body}"))
-                .bean("#{{adapterClassName}}", "-D${method}")
-                .log("${body}");
+                .to("direct:{{endpoint}}");
     }
 }

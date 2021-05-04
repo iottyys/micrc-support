@@ -3,8 +3,10 @@ package io.ttyys.micrc.integration.local.springboot;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.ResourceLoaderAware;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
+import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.type.AnnotationMetadata;
+import org.springframework.core.type.StandardAnnotationMetadata;
 
 /**
  * 本息同进程消息发送端注解扫描器
@@ -18,7 +20,20 @@ public class ClassPathLocalProducerScannerRegistrar implements ImportBeanDefinit
 
     @Override
     public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
-
+        AnnotationAttributes attributes = AnnotationAttributes
+                .fromMap(importingClassMetadata.getAnnotationAttributes(EnableLocalMessageSupport.class.getName()));
+        assert attributes != null;
+        String[] servicePackages = attributes.getStringArray("servicePackages");
+        if (servicePackages.length == 0 && importingClassMetadata instanceof StandardAnnotationMetadata) {
+            servicePackages = new String[]{((StandardAnnotationMetadata) importingClassMetadata)
+                    .getIntrospectedClass().getPackage().getName()};
+        }
+        if (servicePackages.length == 0) {
+            return;
+        }
+        ClassPathLocalProducerScanner scanner = new ClassPathLocalProducerScanner(registry);
+        scanner.setResourceLoader(this.resourceLoader);
+        scanner.doScan(servicePackages);
     }
 
     @Override
