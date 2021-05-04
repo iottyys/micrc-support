@@ -29,6 +29,7 @@ class LocalProducerTest {
     @Test
     void producer() {
         localMessageProducer.setUserPassword(123456)
+        // TODO tengwang 修正 这里复杂类型转换还是要做 没有偷懒的渠道
         // localMessageProducer1.setUser(new io.ttyys.micrc.model.User(userName: "tengwang", age: 999))
     }
 }

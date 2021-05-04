@@ -1,6 +1,7 @@
 package io.ttyys.micrc.integration.local.camel;
 
 import org.apache.camel.builder.RouteBuilder;
+import org.apache.camel.model.dataformat.JsonLibrary;
 
 /**
  * 本地消息消费端路由模版
@@ -18,11 +19,11 @@ public class LocalConsumerRouteTemplate extends RouteBuilder {
                 .templateParameter("adapterClassName")
                 .from("direct:{{endpoint}}")
                 .routeId("consumer-{{adapterClassName}}")
-                .unmarshal().json()
-                .setBody(simple("${body}"))
+                .unmarshal().json(JsonLibrary.Jackson)
                 // .bean("#{{adapterClassName}}", "-D${headers.methodName}(${body})")
-                .bean("#{{adapterClassName}}", "-D${headers.methodName}")
+                .setBody(simple("${body}"))
                 .log("${body}")
-                .log("${headers.methodName}");
+                .log("${headers.methodName}")
+                .toD("bean:{{adapterClassName}}?method=${headers.methodName}");
     }
 }
