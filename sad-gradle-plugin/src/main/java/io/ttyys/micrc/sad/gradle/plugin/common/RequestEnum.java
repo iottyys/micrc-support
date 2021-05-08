@@ -4,8 +4,9 @@ package io.ttyys.micrc.sad.gradle.plugin.common;
  * 请求类型
  */
 public enum RequestEnum {
-    SYNC("sync", "called", "calling", "同步请求"),
-    ASYNC("async", "messaged", "messaging", "异步消息"),
+    LOCAL("local", "called", "calling", "本地同步请求"),
+    RPC("rpc", "called", "calling", "远程同步请求"),
+    INFORMATION("msg", "messaged", "messaging", "异步消息"),
     ;
     /**
      * 目录名称

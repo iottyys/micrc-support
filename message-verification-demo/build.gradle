@@ -1,0 +1,79 @@
+plugins {
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+    id 'com.palantir.docker'
+    id 'java'
+    id 'groovy'
+    id 'idea'
+}
+
+group = 'info.ttyy.frame'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '1.8'
+targetCompatibility = '1.8'
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+
+ext {
+    set('groovyVersion', '2.4.15')
+    set('camelVersion', '3.9.0')
+}
+
+springBoot {
+    mainClassName='com.snszyk.iiot.lim.quota.QuotaServiceApplication'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.apache.camel.springboot:camel-spring-boot-dependencies:${camelVersion}"
+    }
+}
+
+repositories {
+    maven { url "file://" + new File("../../repo").getAbsolutePath() }
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':micrc-core')
+
+    implementation "io.ttyys.micrc:micrc-annotations:0.0.1-SNAPSHOT"
+
+    implementation "org.codehaus.groovy:groovy-all:${groovyVersion}"
+    implementation "org.springframework.boot:spring-boot-starter-aop"
+    annotationProcessor "org.springframework.boot:spring-boot-configuration-processor"
+
+//    implementation "org.springframework.boot:spring-boot-starter-validation"
+
+    // for camel
+    implementation "org.apache.camel.springboot:camel-spring-boot-starter"
+    implementation "org.apache.camel.springboot:camel-bean-starter"
+    testImplementation "org.apache.camel:camel-test-spring-junit5"
+    implementation "org.apache.camel:camel-avro:${camelVersion}"
+
+    // for lombok
+    compileOnly "org.projectlombok:lombok"
+    annotationProcessor "org.projectlombok:lombok"
+
+    // for test
+    testImplementation('org.springframework.boot:spring-boot-starter-test') {
+        exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+    }
+    testImplementation("org.spockframework:spock-core:1.3-groovy-2.4")
+    testImplementation("org.spockframework:spock-spring:1.3-groovy-2.4")
+}
+
+test {
+    useJUnitPlatform()
+}

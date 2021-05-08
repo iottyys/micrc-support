@@ -1,0 +1,41 @@
+venv
+
+.gradle
+/build/
+!gradle/wrapper/gradle-wrapper.jar
+/out/
+/*/out/
+/*/.idea/
+.idea/
+
+/ModuleConfig/*/src
+
+/build/
+/out/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+rebel.xml
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+/web/node_modules/
+/web/package-lock.json
+/web/.idea/
+

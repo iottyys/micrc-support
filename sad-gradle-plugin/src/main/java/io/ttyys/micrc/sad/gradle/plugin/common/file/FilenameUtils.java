@@ -16,6 +16,13 @@
  */
 package io.ttyys.micrc.sad.gradle.plugin.common.file;
 
+import io.ttyys.micrc.sad.gradle.plugin.common.Constants;
+import io.ttyys.micrc.sad.gradle.plugin.common.Strings;
+import org.apache.avro.Protocol;
+
+import java.io.File;
+import java.io.IOException;
+
 /**
  * General filename and filepath manipulation utilities.
  *
@@ -87,53 +94,22 @@ package io.ttyys.micrc.sad.gradle.plugin.common.file;
  * @version $Id: FilenameUtils.java 490424 2006-12-27 01:20:43Z bayard $
  * @since Commons IO 1.1
  */
-class FilenameUtils {
+public class FilenameUtils {
     /**
      * The extension separator character.
      */
     private static final char EXTENSION_SEPARATOR = '.';
 
     /**
-     * The Unix separator character.
-     */
-    private static final char UNIX_SEPARATOR = '/';
-
-    /**
-     * The Windows separator character.
-     */
-    private static final char WINDOWS_SEPARATOR = '\\';
-
-    /**
-     * Returns the index of the last directory separator character.
-     * <p>
-     * This method will handle a file in either Unix or Windows format.
-     * The position of the last forward or backslash is returned.
-     * <p>
-     * The output will be the same irrespective of the machine that the code is running on.
-     *
-     * @param filename  the filename to find the last path separator in, null returns -1
-     * @return the index of the last separator character, or -1 if there
-     * is no such character
-     */
-    private static int indexOfLastSeparator(String filename) {
-        if (filename == null) {
-            return -1;
-        }
-        int lastUnixPos = filename.lastIndexOf(UNIX_SEPARATOR);
-        int lastWindowsPos = filename.lastIndexOf(WINDOWS_SEPARATOR);
-        return Math.max(lastUnixPos, lastWindowsPos);
-    }
-
-    /**
      * Returns the index of the last extension separator character, which is a dot.
      * <p>
      * This method also checks that there is no directory separator after the last dot.
-     * To do this it uses {@link #indexOfLastSeparator(String)} which will
+     * To do this it uses {String.indexOf(String)} which will
      * handle a file in either Unix or Windows format.
      * <p>
      * The output will be the same irrespective of the machine that the code is running on.
      *
-     * @param filename  the filename to find the last path separator in, null returns -1
+     * @param filename the filename to find the last path separator in, null returns -1
      * @return the index of the last separator character, or -1 if there
      * is no such character
      */
@@ -142,7 +118,7 @@ class FilenameUtils {
             return -1;
         }
         int extensionPos = filename.lastIndexOf(EXTENSION_SEPARATOR);
-        int lastSeparator = indexOfLastSeparator(filename);
+        int lastSeparator = filename.indexOf(File.separator);
         return lastSeparator > extensionPos ? -1 : extensionPos;
     }
 
@@ -160,14 +136,14 @@ class FilenameUtils {
      * <p>
      * The output will be the same irrespective of the machine that the code is running on.
      *
-     * @param filename  the filename to query, null returns null
+     * @param filename the filename to query, null returns null
      * @return the name of the file without the path, or an empty string if none exists
      */
-    private static String getName(String filename) {
+    public static String getName(String filename) {
         if (filename == null) {
             return null;
         }
-        int index = indexOfLastSeparator(filename);
+        int index = filename.indexOf(File.separator);
         return filename.substring(index + 1);
     }
 
@@ -185,7 +161,7 @@ class FilenameUtils {
      * <p>
      * The output will be the same irrespective of the machine that the code is running on.
      *
-     * @param filename  the filename to query, null returns null
+     * @param filename the filename to query, null returns null
      * @return the name of the file without the path, or an empty string if none exists
      */
     static String getBaseName(String filename) {
@@ -222,6 +198,7 @@ class FilenameUtils {
     }
 
     //-----------------------------------------------------------------------
+
     /**
      * Removes the extension from a filename.
      * <p>
@@ -236,10 +213,10 @@ class FilenameUtils {
      * <p>
      * The output will be the same irrespective of the machine that the code is running on.
      *
-     * @param filename  the filename to query, null returns null
+     * @param filename the filename to query, null returns null
      * @return the filename minus the extension
      */
-    private static String removeExtension(String filename) {
+    public static String removeExtension(String filename) {
         if (filename == null) {
             return null;
         }
@@ -249,5 +226,12 @@ class FilenameUtils {
         } else {
             return filename.substring(0, index);
         }
+    }
+
+    public static String getEndpointByProtocolFile(File file) throws IOException {
+        Protocol protocol = Protocol.parse(file);
+        String namespace = protocol.getNamespace();
+        return (namespace + File.separator + Strings.firstCharLower(removeExtension(file.getName())))
+                .replaceAll(Constants.NAMESPACE_SEPARATOR_REG, File.separator);
     }
 }
