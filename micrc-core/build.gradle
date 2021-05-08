@@ -20,7 +20,6 @@ repositories {
 }
 
 bootJar.enabled = false
-
 jar.enabled = true
 
 dependencyManagement {
@@ -34,9 +33,9 @@ dependencies {
     implementation "io.ttyys.micrc:micrc-annotations:0.0.1-SNAPSHOT"
 
     implementation "org.springframework.boot:spring-boot-starter-data-jpa"
+
     implementation "org.springframework.boot:spring-boot-starter-integration"
     implementation "org.springframework.integration:spring-integration-jdbc"
-    implementation "org.springframework.integration:spring-integration-jms"
 
     implementation "org.apache.camel.springboot:camel-spring-boot-starter"
     implementation "org.apache.camel.springboot:camel-bean-starter"
@@ -45,7 +44,7 @@ dependencies {
     implementation "org.apache.camel.springboot:camel-jms-starter"
     implementation "org.apache.camel.springboot:camel-jpa-starter"
     testImplementation "org.apache.camel:camel-test-spring-junit5"
-    testImplementation('org.springframework.boot:spring-boot-starter-test')
+
 
     implementation "org.springframework.boot:spring-boot-starter-artemis"
     implementation "org.apache.activemq:artemis-jms-server"
@@ -53,6 +52,10 @@ dependencies {
     // for lombok
     compileOnly "org.projectlombok:lombok"
     annotationProcessor "org.projectlombok:lombok"
+
+    testImplementation('org.springframework.boot:spring-boot-starter-test')
+
+    runtimeOnly "com.h2database:h2"
 }
 
 test {
