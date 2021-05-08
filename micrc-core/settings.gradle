@@ -1,0 +1,8 @@
+pluginManagement {
+    plugins {
+        id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+        id 'org.springframework.boot' version '2.3.10.RELEASE'
+    }
+}
+
+rootProject.name = 'micrc-core'

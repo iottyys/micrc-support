@@ -1,6 +1,8 @@
 plugins {
     id 'java'
     id 'idea'
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
 }
 
 group 'io.ttyys.micrc'
@@ -9,6 +11,7 @@ sourceCompatibility = '1.8'
 targetCompatibility = '1.8'
 
 ext {
+    set('camelVersion', '3.9.0')
 }
 
 repositories {
@@ -16,8 +19,36 @@ repositories {
     mavenCentral()
 }
 
+bootJar.enabled = false
+
 jar.enabled = true
 
-dependencies {
+dependencyManagement {
+    imports {
+        //noinspection GrUnresolvedAccess
+        mavenBom "org.apache.camel.springboot:camel-spring-boot-bom:${camelVersion}"
+    }
 }
 
+dependencies {
+    implementation "org.springframework.boot:spring-boot-starter-data-jpa"
+    implementation "org.springframework.boot:spring-boot-starter-integration"
+    implementation "org.springframework.integration:spring-integration-jdbc"
+    implementation "org.springframework.integration:spring-integration-jms"
+
+    implementation "org.apache.camel.springboot:camel-spring-boot-starter"
+    implementation "org.apache.camel.springboot:camel-bean-starter"
+    implementation "org.apache.camel.springboot:camel-avro-starter"
+    implementation "org.apache.camel.springboot:camel-avro-rpc-starter"
+    implementation "org.apache.camel.springboot:camel-jms-starter"
+    implementation "org.apache.camel.springboot:camel-jpa-starter"
+    testImplementation "org.apache.camel:camel-test-spring-junit5"
+    testImplementation('org.springframework.boot:spring-boot-starter-test')
+
+    implementation "org.springframework.boot:spring-boot-starter-artemis"
+    implementation "org.apache.activemq:artemis-jms-server"
+}
+
+test {
+    useJUnitPlatform()
+}
