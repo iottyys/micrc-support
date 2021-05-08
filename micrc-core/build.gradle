@@ -3,7 +3,6 @@ plugins {
     id 'idea'
     id 'org.springframework.boot'
     id 'io.spring.dependency-management'
-    id 'maven'
 }
 
 group 'io.ttyys.micrc'
@@ -16,7 +15,6 @@ ext {
 }
 
 repositories {
-    maven { url "file://" + new File("../../repo").getAbsolutePath() }
     mavenLocal()
     mavenCentral()
 }
@@ -24,22 +22,6 @@ repositories {
 bootJar.enabled = false
 
 jar.enabled = true
-
-dependencyManagement {
-    imports {
-        mavenBom "org.apache.camel.springboot:camel-spring-boot-dependencies:${camelVersion}"
-    }
-}
-
-uploadArchives {
-    repositories {
-        /**配置Maven部署器，将工件上传到本地目录，这里是放到与该项目同级目录的repo目录下*/
-        mavenDeployer {
-            repository(url: "file://" + new File("../../repo").getAbsolutePath())
-        }
-    }
-}
-
 
 dependencyManagement {
     imports {
