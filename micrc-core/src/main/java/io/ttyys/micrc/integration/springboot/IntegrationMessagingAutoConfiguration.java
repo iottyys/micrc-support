@@ -1,5 +1,6 @@
 package io.ttyys.micrc.integration.springboot;
 
+import io.ttyys.micrc.integration.route.IntegrationMessagingRouteConfiguration;
 import io.ttyys.micrc.persistence.springboot.PersistenceAutoConfiguration;
 import org.apache.activemq.artemis.api.core.TransportConfiguration;
 import org.apache.activemq.artemis.api.core.client.ActiveMQClient;
@@ -36,7 +37,9 @@ import javax.jms.ConnectionFactory;
 @ConditionalOnClass({ ConnectionFactory.class, ActiveMQConnectionFactory.class })
 @ConditionalOnMissingBean(ConnectionFactory.class)
 @EnableConfigurationProperties({ ArtemisProperties.class, JmsProperties.class })
-@Import({ ArtemisEmbeddedServerConfiguration.class, PersistenceAutoConfiguration.class })
+@Import({ ArtemisEmbeddedServerConfiguration.class,
+        PersistenceAutoConfiguration.class,
+        IntegrationMessagingRouteConfiguration.class})
 public class IntegrationMessagingAutoConfiguration {
     private final ArtemisProperties artemisProperties;
 
@@ -83,6 +86,13 @@ public class IntegrationMessagingAutoConfiguration {
         ChainedTransactionManager transactionManager =
                 new ChainedTransactionManager(jpaTransactionManager, outboundTransactionManager());
         SpringTransactionPolicy policy = new SpringTransactionPolicy(transactionManager);
+        policy.setPropagationBehaviorName("PROPAGATION_REQUIRED");
+        return policy;
+    }
+
+    @Bean("DATABASE_TRANSACTION_PROPAGATION_REQUIRED")
+    public SpringTransactionPolicy databaseTransactionPolicy(JpaTransactionManager jpaTransactionManager) {
+        SpringTransactionPolicy policy = new SpringTransactionPolicy(jpaTransactionManager);
         policy.setPropagationBehaviorName("PROPAGATION_REQUIRED");
         return policy;
     }
