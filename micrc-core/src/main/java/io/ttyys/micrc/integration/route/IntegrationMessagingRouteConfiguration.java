@@ -36,7 +36,6 @@ public class IntegrationMessagingRouteConfiguration extends RouteBuilder {
         routeTemplate("io.ttyys.micrc.integration.route.IntegrationMessagingRouteBuilder.messagePublishInternal")
                 .templateParameter("messagePublishEndpoint", null, "endpoint of message publishing")
                 .from("direct:{{messagePublishEndpoint}}")
-                .transacted("DATABASE_TRANSACTION_PROPAGATION_REQUIRED")
                 .marshal().avro(simple("${header.AvroMessageClassName}"))
                 .setExchangePattern(ExchangePattern.InOnly)
                 .to("spring-integration:bufferedOutputMessageChannel?inOut=false")
