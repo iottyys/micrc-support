@@ -10,10 +10,11 @@ import org.apache.activemq.artemis.jms.client.ActiveMQConnectionFactory;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.component.jms.JmsComponent;
 import org.apache.camel.component.jms.JmsMessageType;
-import org.apache.camel.spring.spi.SpringTransactionPolicy;
+import org.apache.camel.component.jms.springboot.JmsComponentAutoConfiguration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.jms.JmsAutoConfiguration;
@@ -30,17 +31,17 @@ import org.springframework.jms.connection.JmsTransactionManager;
 import org.springframework.orm.jpa.JpaTransactionManager;
 
 import javax.jms.ConnectionFactory;
-import java.util.UUID;
 
 @Configuration
+@EnableAutoConfiguration(exclude = JmsComponentAutoConfiguration.class)
 @AutoConfigureBefore(JmsAutoConfiguration.class)
-@AutoConfigureAfter({ JndiConnectionFactoryAutoConfiguration.class})
+@AutoConfigureAfter({ JndiConnectionFactoryAutoConfiguration.class })
 @ConditionalOnClass({ ConnectionFactory.class, ActiveMQConnectionFactory.class })
 @ConditionalOnMissingBean(ConnectionFactory.class)
 @EnableConfigurationProperties({ ArtemisProperties.class, JmsProperties.class })
 @Import({ ArtemisEmbeddedServerConfiguration.class,
         PersistenceAutoConfiguration.class,
-        IntegrationMessagingRouteConfiguration.class})
+        IntegrationMessagingRouteConfiguration.class })
 public class IntegrationMessagingAutoConfiguration {
     private final ArtemisProperties artemisProperties;
 
@@ -50,9 +51,12 @@ public class IntegrationMessagingAutoConfiguration {
     }
 
     @Bean("inboundConnectionFactory")
-    public ActiveMQConnectionFactory inboundConnectionFactory() {
-        ActiveMQConnectionFactory connectionFactory = createConnectionFactory();
-        connectionFactory.setClientID(""); // todo spring.name
+    public CachingConnectionFactory inboundConnectionFactory() {
+        CachingConnectionFactory connectionFactory = new CachingConnectionFactory(createConnectionFactory());
+        // avoid prefetch
+        connectionFactory.setCacheConsumers(false);
+        // todo 服务负载均衡的集群环境下，持久化订阅的配置
+        connectionFactory.setClientId("");
         return connectionFactory;
     }
 
@@ -68,13 +72,9 @@ public class IntegrationMessagingAutoConfiguration {
         return transactionManager;
     }
 
-    @Bean("OUTBOUND_TX_PROPAGATION_REQUIRED")
-    public SpringTransactionPolicy outboundTxPolicy(JpaTransactionManager jpaTransactionManager) {
-        ChainedTransactionManager transactionManager =
-                new ChainedTransactionManager(jpaTransactionManager, outboundTransactionManager());
-        SpringTransactionPolicy policy = new SpringTransactionPolicy(transactionManager);
-        policy.setPropagationBehaviorName("PROPAGATION_REQUIRED");
-        return policy;
+    @Bean
+    public ChainedTransactionManager outboundChainedTxManager(JpaTransactionManager jpaTransactionManager) {
+        return new ChainedTransactionManager(jpaTransactionManager, outboundTransactionManager());
     }
 
     @Bean("publish")
@@ -95,6 +95,7 @@ public class IntegrationMessagingAutoConfiguration {
         JmsComponent subscriber = JmsComponent.jmsComponent(inboundConnectionFactory());
         subscriber.setTransacted(true);
         subscriber.setLazyCreateTransactionManager(false);
+        subscriber.setCacheLevelName("CACHE_CONSUMER");
         subscriber.setDisableReplyTo(true);
         subscriber.setTestConnectionOnStartup(true);
         subscriber.setJmsMessageType(JmsMessageType.Bytes);

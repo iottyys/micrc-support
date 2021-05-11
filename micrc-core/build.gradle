@@ -43,6 +43,7 @@ dependencies {
     implementation "org.apache.camel.springboot:camel-avro-rpc-starter"
     implementation "org.apache.camel.springboot:camel-jms-starter"
     implementation "org.apache.camel.springboot:camel-jpa-starter"
+    implementation "org.apache.camel.springboot:camel-spring-integration-starter"
     testImplementation "org.apache.camel:camel-test-spring-junit5"
 
 

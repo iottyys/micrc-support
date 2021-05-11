@@ -1,6 +1,8 @@
 package io.ttyys.micrc.integration.springboot;
 
+import com.zaxxer.hikari.HikariDataSource;
 import io.ttyys.micrc.integration.EnableMessagingIntegration;
+import io.ttyys.micrc.integration.route.IntegrationMessagingRouteConfiguration;
 import org.apache.activemq.artemis.core.server.embedded.EmbeddedActiveMQ;
 import org.apache.camel.CamelContext;
 import org.apache.camel.EndpointInject;
@@ -10,33 +12,31 @@ import org.apache.camel.builder.TemplatedRouteBuilder;
 import org.apache.camel.component.jms.JmsComponent;
 import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.spring.boot.CamelContextConfiguration;
-import org.apache.camel.spring.spi.SpringTransactionPolicy;
 import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
 import org.apache.camel.test.spring.junit5.MockEndpoints;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.integration.dsl.IntegrationFlow;
-import org.springframework.integration.dsl.IntegrationFlows;
-import org.springframework.integration.dsl.MessageChannels;
-import org.springframework.integration.dsl.Pollers;
+import org.springframework.context.annotation.Import;
 import org.springframework.integration.jdbc.store.JdbcChannelMessageStore;
-import org.springframework.integration.jdbc.store.channel.MySqlChannelMessageStoreQueryProvider;
+import org.springframework.integration.jdbc.store.channel.H2ChannelMessageStoreQueryProvider;
 import org.springframework.jms.connection.JmsTransactionManager;
-import org.springframework.messaging.MessageChannel;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.stereotype.Component;
 
 import javax.jms.ConnectionFactory;
-import javax.sql.DataSource;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @CamelSpringBootTest
-@MockEndpoints("direct:end")
+@MockEndpoints("direct:end*")
 @SpringBootApplication
 @EnableMessagingIntegration
 public class IntegrationMessagingConfigurationTest {
@@ -49,13 +49,7 @@ public class IntegrationMessagingConfigurationTest {
     @Autowired
     private ConnectionFactory outboundConnectionFactory;
     @Autowired
-    private JmsTransactionManager inboundTransactionManager;
-    @Autowired
     private JmsTransactionManager outboundTransactionManager;
-    @Autowired
-    private SpringTransactionPolicy INBOUND_TX_PROPAGATION_REQUIRED;
-    @Autowired
-    private SpringTransactionPolicy OUTBOUND_TX_PROPAGATION_REQUIRED;
     @Autowired
     private JmsComponent publish;
     @Autowired
@@ -73,13 +67,7 @@ public class IntegrationMessagingConfigurationTest {
         assertThat(outboundConnectionFactory).isNotNull();
         assertThat(inboundConnectionFactory).isNotEqualTo(outboundConnectionFactory);
         // jms transaction manager
-        assertThat(inboundTransactionManager).isNotNull();
         assertThat(outboundTransactionManager).isNotNull();
-        assertThat(inboundTransactionManager).isNotEqualTo(outboundTransactionManager);
-        // tx manager policy
-        assertThat(INBOUND_TX_PROPAGATION_REQUIRED).isNotNull();
-        assertThat(OUTBOUND_TX_PROPAGATION_REQUIRED).isNotNull();
-        assertThat(INBOUND_TX_PROPAGATION_REQUIRED).isNotEqualTo(OUTBOUND_TX_PROPAGATION_REQUIRED);
         // camel jms component
         assertThat(publish).isNotNull();
         assertThat(subscribe).isNotNull();
@@ -89,6 +77,7 @@ public class IntegrationMessagingConfigurationTest {
     @Autowired
     private ProducerTemplate template;
 
+    @SuppressWarnings("unused")
     @EndpointInject("mock:direct:end")
     private MockEndpoint routeMock;
 
@@ -108,25 +97,55 @@ public class IntegrationMessagingConfigurationTest {
     @Test
     public void testBasicSubscribe() throws InterruptedException {
         routeMock.expectedMessageCount(2);
-        routeMock.expectedBodiesReceived("demo jms message");
+        routeMock.expectedBodiesReceivedInAnyOrder("demo jms message", "demo test");
         template.sendBody("publish:topic:demo.test.topic", "demo jms message");
         routeMock.assertIsSatisfied();
     }
 
+    @SuppressWarnings("unused")
+    @EndpointInject("mock:direct:end-sync")
+    private MockEndpoint mockEndpointSync;
+
     @Test
     public void testBasicPublish() throws InterruptedException {
-        routeMock.expectedMessageCount(2);
-        routeMock.expectedBodiesReceived("demo jms message", "demo test");
+        routeMock.expectedMessageCount(3);
+        mockEndpointSync.expectedBodiesReceived("demo jms message");
+        routeMock.expectedBodiesReceivedInAnyOrder("demo jms message", "demo test");
         template.sendBody("direct:module1.demo.test.topic", "demo jms message");
+        mockEndpointSync.assertIsSatisfied();
+        routeMock.assertIsSatisfied();
+    }
+
+    @Test
+    public void testTmplRouteSubscribe() throws InterruptedException {
+        Map<String, Object> headers = new HashMap<>();
+        headers.put("CamelBeanMethodName", "demo(String)");
+        routeMock.expectedMessageCount(1);
+        routeMock.expectedBodiesReceived("demo test");
+        template.sendBodyAndHeaders(
+                "publish:topic:test.without.db_tx.topic",
+                "tmpl route subscribe jms message",
+                headers);
+        routeMock.assertIsSatisfied();
+    }
+
+    @Test
+    public void testTmplRoutePublishInternal() throws InterruptedException {
+        routeMock.expectedMessageCount(3);
+        template.requestBody(
+                "direct:demo.test.topic",
+                "tmpl route publish jms message to message store");
         routeMock.assertIsSatisfied();
     }
 
     @Configuration
+    @Import(DataSourceAutoConfiguration.class)
     static class CamelTestRoute extends RouteBuilder {
 
         @Override
         public void configure() {
             from("direct:end").log("end");
+            from("direct:end-sync").log("end-sync");
 
             from("direct:start")
                     .to("direct:end");
@@ -140,7 +159,8 @@ public class IntegrationMessagingConfigurationTest {
                     .to("direct:end");
 
             from("direct:module1.demo.test.topic")
-                    .to("publish:topic:demo.test.topic");
+                    .to("publish:topic:demo.test.topic")
+                    .to("direct:end-sync");
         }
 
         @Bean
@@ -148,21 +168,44 @@ public class IntegrationMessagingConfigurationTest {
             return new CamelContextConfiguration() {
                 @Override
                 public void beforeApplicationStart(CamelContext camelContext) {
-//                    TemplatedRouteBuilder.builder(camelContext, "myTemplate")
-//                            .parameter("name", "one")
-//                            .parameter("greeting", "Hello")
-//                            .add();
+                    TemplatedRouteBuilder
+                            .builder(camelContext,
+                                    IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION)
+                            .parameter("topicName", "test.without.db_tx.topic")
+                            // clientId和subscriptionName共同唯一确定一个broker持久化队列，服务重启后，使用这个队列继续获取消息
+                            // 确保同一个订阅，这两个属性是稳定不变的，否则会丢失消息。服务升级也要确保消费完所有队列的消息才能停机
+                            // subscriptionName必须以业务服务包名前缀保持全局唯一
+                            .parameter("subscriptionName", "test.sub")
+                            .parameter("adapterName", "demoMessageAdapter")
+                            .parameter("end", "mock:direct:end")
+                            .add();
+
+                    TemplatedRouteBuilder
+                            .builder(camelContext,
+                                    IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_PUBLISH_INTERNAL)
+                            .parameter("messagePublishEndpoint", "demo.test.topic")
+                            .parameter("end", "direct:end")
+                            .add();
                 }
 
                 @Override
                 public void afterApplicationStart(CamelContext camelContext) {
-
                 }
             };
+        }
+
+        @Bean
+        public JdbcChannelMessageStore jdbcChannelMessageStore(HikariDataSource dataSource) {
+            JdbcChannelMessageStore store = new JdbcChannelMessageStore();
+            store.setDataSource(dataSource);
+            store.setChannelMessageStoreQueryProvider(new H2ChannelMessageStoreQueryProvider());
+            store.setPriorityEnabled(true);
+            return store;
         }
     }
 }
 
+@SuppressWarnings("unused")
 @Component
 class DemoMessageAdapter {
     public void hello() {

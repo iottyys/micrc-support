@@ -9,12 +9,14 @@ import org.springframework.boot.autoconfigure.transaction.TransactionManagerCust
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.orm.jpa.JpaTransactionManager;
 
 @Configuration
 @AutoConfigureBefore(HibernateJpaAutoConfiguration.class)
 public class PersistenceAutoConfiguration {
     @Bean
+    @Primary
     @ConditionalOnMissingBean
     public JpaTransactionManager jpaTransactionManager(
             ObjectProvider<TransactionManagerCustomizers> transactionManagerCustomizers) {
