@@ -39,10 +39,9 @@ public class IntegrationMessagingRouteConfiguration extends RouteBuilder {
                         "log:" + IntegrationMessagingRouteConfiguration.class.getName()
                                 + "?showAll=true&multiline=true&level=DEBUG", "endpoint of end")
                 .from("subscribe:topic:{{topicName}}?subscriptionName={{subscriptionName}}")
-//                .unmarshal().avro(simple("${header.AvroMessageClassName}"))
+                .toD("dataformat:avro:unmarshal?instanceClassName=${header.AvroSchemaClassName}")
                 .to("bean:{{adapterName}}")
-                .to("{{end}}")
-                .end();
+                .to("{{end}}");
 
         routeTemplate(ROUTE_TMPL_MESSAGE_PUBLISH_INTERNAL)
                 .templateParameter("messagePublishEndpoint", null, "endpoint of message publishing")
@@ -56,13 +55,12 @@ public class IntegrationMessagingRouteConfiguration extends RouteBuilder {
                                 "message publishing must done in transaction. please open it first. ");
                     }
                 })
-//                .marshal().avro(simple("${header.AvroMessageClassName}"))
+                .toD("dataformat:avro:marshal?instanceClassName=${header.AvroSchemaClassName}")
                 .setExchangePattern(ExchangePattern.InOnly)
                 .setHeader("CamelJmsDestinationName", constant("{{messagePublishEndpoint}}"))
                 .to("spring-integration:bufferedOutputMessageChannel?inOut=false")
                 .setExchangePattern(ExchangePattern.InOut)
-                .to("{{end}}")
-                .end();
+                .to("{{end}}");
 
         from("spring-integration:outboundMessageChannel")
                 .process(exchange -> {
@@ -75,8 +73,7 @@ public class IntegrationMessagingRouteConfiguration extends RouteBuilder {
                         exchange.getIn().getHeader("CamelJmsDestinationName")))
                 .to("publish:topic:dynamicDest")
                 .to("log:" + IntegrationMessagingRouteConfiguration.class.getName()
-                        + "?showAll=true&multiline=true&level=DEBUG")
-                .end();
+                        + "?showAll=true&multiline=true&level=DEBUG");
     }
 
     @Bean("jdbcChannelMessageStore")

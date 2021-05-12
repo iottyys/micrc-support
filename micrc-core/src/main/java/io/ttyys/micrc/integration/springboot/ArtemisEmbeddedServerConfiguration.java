@@ -89,6 +89,12 @@ class ArtemisEmbeddedServerConfiguration {
         configuration.setPagingDirectory("");
         configuration.setLargeMessagesDirectory("");
         configuration.setNodeManagerLockDirectory("");
+        // todo dlq 设置 -- 每个地址应该都有自己的DLQ，方便管理维护
+//        AddressSettings addressSettings = configuration.getAddressesSettings().get("#");
+//        addressSettings.setAutoCreateDeadLetterResources(true);
+//        addressSettings.setDeadLetterQueuePrefix(new SimpleString(""));
+//        addressSettings.setDeadLetterQueueSuffix(new SimpleString(".DLQ"));
+//        addressSettings.set
         // todo 发送消重
         // todo 组建集群 -- 针对当前服务负载均衡和多服务情况下的队列复制
         // todo HA -- ActiveMQClient.createServerLocatorWithoutHA不影响，服务本身HA，不影响发送接收消息
