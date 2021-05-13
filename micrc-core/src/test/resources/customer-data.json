@@ -1,0 +1,14 @@
+[
+  {
+    "_class": "io.ttyys.micrc.integration.route.fixtures.Customer",
+    "firstName": "apple",
+    "lastName": "red",
+    "id": 1
+  },
+  {
+    "_class": "io.ttyys.micrc.integration.route.fixtures.Customer",
+    "firstName": "guava",
+    "lastName": "green",
+    "id": 2
+  }
+]

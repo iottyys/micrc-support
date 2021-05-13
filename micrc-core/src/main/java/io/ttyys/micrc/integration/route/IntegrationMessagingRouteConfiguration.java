@@ -2,12 +2,9 @@ package io.ttyys.micrc.integration.route;
 
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.builder.RouteBuilder;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.transaction.ChainedTransactionManager;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
@@ -21,7 +18,6 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import javax.sql.DataSource;
 
 @Configuration
-@Import(DataSourceAutoConfiguration.class)
 public class IntegrationMessagingRouteConfiguration extends RouteBuilder {
 
     public static final String ROUTE_TMPL_MESSAGE_SUBSCRIPTION =
@@ -50,9 +46,9 @@ public class IntegrationMessagingRouteConfiguration extends RouteBuilder {
                                 + "?showAll=true&multiline=true&level=DEBUG", "endpoint of end")
                 .from("direct:{{messagePublishEndpoint}}")
                 .process(exchange -> {
-                    if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                    if (!TransactionSynchronizationManager.isActualTransactionActive()) {
                         throw new IllegalStateException(
-                                "message publishing must done in transaction. please open it first. ");
+                                "Message publishing must done in transaction. Please open it first. ");
                     }
                 })
                 .toD("dataformat:avro:marshal?instanceClassName=${header.AvroSchemaClassName}")
@@ -63,12 +59,7 @@ public class IntegrationMessagingRouteConfiguration extends RouteBuilder {
                 .to("{{end}}");
 
         from("spring-integration:outboundMessageChannel")
-                .process(exchange -> {
-                    if (TransactionSynchronizationManager.isActualTransactionActive()) {
-                        throw new IllegalStateException(
-                                "message publishing must done in transaction. please open it first. ");
-                    }
-                })
+                .id("io.ttyys.micrc.integration.route.IntegrationMessagingRouteConfiguration.outboundMessageChannel")
                 .process(exchange -> exchange.getIn().setHeader("CamelJmsDestinationName",
                         exchange.getIn().getHeader("CamelJmsDestinationName")))
                 .to("publish:topic:dynamicDest")
@@ -78,7 +69,7 @@ public class IntegrationMessagingRouteConfiguration extends RouteBuilder {
 
     @Bean("jdbcChannelMessageStore")
     @ConditionalOnMissingBean
-    public JdbcChannelMessageStore jdbcChannelMessageStore(@Qualifier("dataSource") DataSource dataSource) {
+    public JdbcChannelMessageStore jdbcChannelMessageStore(DataSource dataSource) {
         JdbcChannelMessageStore store = new JdbcChannelMessageStore();
         store.setDataSource(dataSource);
         store.setChannelMessageStoreQueryProvider(new MySqlChannelMessageStoreQueryProvider());
