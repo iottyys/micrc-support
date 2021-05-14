@@ -50,7 +50,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @MockEndpoints("direct:end")
 @SpringBootApplication
-@EnableMessagingIntegration
+@EnableMessagingIntegration(basePackages = "io.ttyys.micrc.integration")
 public class IntegrationMessagingTransactionTest {
 
     @Autowired

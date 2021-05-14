@@ -5,18 +5,15 @@ import io.ttyys.micrc.integration.EnableMessagingIntegration;
 import io.ttyys.micrc.integration.route.IntegrationMessagingRouteConfiguration;
 import io.ttyys.micrc.integration.springboot.fixtures.Message;
 import org.apache.activemq.artemis.core.server.embedded.EmbeddedActiveMQ;
-import org.apache.camel.CamelContext;
-import org.apache.camel.EndpointInject;
-import org.apache.camel.ProducerTemplate;
+import org.apache.camel.*;
+import org.apache.camel.builder.AdviceWith;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.builder.TemplatedRouteBuilder;
 import org.apache.camel.component.jms.JmsComponent;
 import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.spring.boot.CamelContextConfiguration;
 import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
 import org.apache.camel.test.spring.junit5.MockEndpoints;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
@@ -28,6 +25,7 @@ import org.springframework.integration.jdbc.store.channel.H2ChannelMessageStoreQ
 import org.springframework.jms.connection.JmsTransactionManager;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.jms.ConnectionFactory;
 
@@ -39,8 +37,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 @CamelSpringBootTest
 @MockEndpoints("direct:end*")
 @SpringBootApplication
-@EnableMessagingIntegration
+@EnableMessagingIntegration(basePackages = "io.ttyys.micrc.integration")
 public class IntegrationMessagingConfigurationTest {
+    @Autowired
+    private CamelContext context;
     @Autowired
     private JpaTransactionManager jpaTransactionManager;
     @Autowired
@@ -83,9 +83,29 @@ public class IntegrationMessagingConfigurationTest {
     private MockEndpoint routeMock;
 
     @BeforeEach
-    public void resetMock() {
+    public void resetMock() throws Exception {
         routeMock.reset();
         mockEndpointSync.reset();
+        AdviceWith.adviceWith(context,
+                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_PUBLISH_INTERNAL + "-0",
+                true,
+                a -> a.weaveAddLast().to("direct:end-sync").id("direct:end-sync"));
+        AdviceWith.adviceWith(context,
+                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION + "-0",
+                true,
+                a -> a.weaveAddLast().to("direct:end").id("direct:end"));
+    }
+
+    @AfterEach
+    public void clearAdvice() throws Exception {
+        AdviceWith.adviceWith(context,
+                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_PUBLISH_INTERNAL + "-0",
+                true,
+                a -> a.weaveById("direct:end-sync").remove());
+        AdviceWith.adviceWith(context,
+                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION + "-0",
+                true,
+                a -> a.weaveById("direct:end").remove());
     }
 
     @Test
@@ -97,7 +117,7 @@ public class IntegrationMessagingConfigurationTest {
     }
 
     @Test
-    public void testBasicSubscribe() throws InterruptedException {
+    public void testBasicSubscribe() throws Exception {
         routeMock.expectedMessageCount(2);
         routeMock.expectedBodiesReceivedInAnyOrder("demo jms message", "demo test");
         template.sendBody("publish:topic:demo.test.topic", "demo jms message");
@@ -109,7 +129,7 @@ public class IntegrationMessagingConfigurationTest {
     private MockEndpoint mockEndpointSync;
 
     @Test
-    public void testBasicPublish() throws InterruptedException {
+    public void testBasicPublish() throws Exception {
         routeMock.expectedMessageCount(3);
         mockEndpointSync.expectedBodiesReceived("demo jms message");
         routeMock.expectedBodiesReceivedInAnyOrder("demo jms message", "demo test");
@@ -119,7 +139,7 @@ public class IntegrationMessagingConfigurationTest {
     }
 
     @Test
-    public void testTmplRouteSubscribe() throws InterruptedException {
+    public void testTmplRouteSubscribe() throws Exception {
         Map<String, Object> headers = new HashMap<>();
         headers.put("CamelBeanMethodName", "demo(io.ttyys.micrc.integration.springboot.fixtures.Message)");
         headers.put("AvroSchemaClassName", "io.ttyys.micrc.integration.springboot.fixtures.Message");
@@ -135,16 +155,17 @@ public class IntegrationMessagingConfigurationTest {
         routeMock.assertIsSatisfied();
     }
 
+    @Autowired
+    private DemoMessageAdapter adapter;
+
     @Test
-    public void testTmplRoutePublishInternal() throws InterruptedException {
+    public void testTmplRoutePublishInternal() throws Exception {
+        routeMock.setAssertPeriod(5000);
         mockEndpointSync.expectedMessageCount(1);
         routeMock.expectedMessageCount(2);
-        Map<String, Object> headers = new HashMap<>();
-        headers.put("AvroSchemaClassName", "io.ttyys.micrc.integration.springboot.fixtures.Message");
-        template.requestBodyAndHeaders(
-                "direct:demo.test.topic",
+        adapter.publishInternal(
                 Message.newBuilder().setFrom("test from").setBody("test body").setTo("test to").build(),
-                headers);
+                "io.ttyys.micrc.integration.springboot.fixtures.Message");
         mockEndpointSync.assertIsSatisfied();
         routeMock.assertIsSatisfied();
     }
@@ -181,24 +202,24 @@ class ConfigurationTestConfiguration extends RouteBuilder {
         return new CamelContextConfiguration() {
             @Override
             public void beforeApplicationStart(CamelContext camelContext) {
-                TemplatedRouteBuilder
-                        .builder(camelContext,
-                                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION)
-                        .parameter("topicName", "test.without.db_tx.topic")
-                        // clientId和subscriptionName共同唯一确定一个broker持久化队列，服务重启后，使用这个队列继续获取消息
-                        // 确保同一个订阅，这两个属性是稳定不变的，否则会丢失消息。服务升级也要确保消费完所有队列的消息才能停机
-                        // subscriptionName必须以业务服务包名前缀保持全局唯一
-                        .parameter("subscriptionName", "test.sub")
-                        .parameter("adapterName", "demoMessageAdapter")
-                        .parameter("end", "direct:end")
-                        .add();
-
-                TemplatedRouteBuilder
-                        .builder(camelContext,
-                                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_PUBLISH_INTERNAL)
-                        .parameter("messagePublishEndpoint", "demo.test.topic")
-                        .parameter("end", "direct:end-sync")
-                        .add();
+//                TemplatedRouteBuilder
+//                        .builder(camelContext,
+//                                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION)
+//                        .parameter("topicName", "test.without.db_tx.topic")
+//                        // clientId和subscriptionName共同唯一确定一个broker持久化队列，服务重启后，使用这个队列继续获取消息
+//                        // 确保同一个订阅，这两个属性是稳定不变的，否则会丢失消息。服务升级也要确保消费完所有队列的消息才能停机
+//                        // subscriptionName必须以业务服务包名前缀保持全局唯一
+//                        .parameter("subscriptionName", "test.sub")
+//                        .parameter("adapterName", "demoMessageAdapter")
+//                        .parameter("end", "direct:end")
+//                        .add();
+//
+//                TemplatedRouteBuilder
+//                        .builder(camelContext,
+//                                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_PUBLISH_INTERNAL)
+//                        .parameter("messagePublishEndpoint", "demo.test.topic")
+//                        .parameter("end", "direct:end-sync")
+//                        .add();
             }
 
             @Override
@@ -220,6 +241,10 @@ class ConfigurationTestConfiguration extends RouteBuilder {
 @SuppressWarnings("unused")
 @Component
 class DemoMessageAdapter {
+
+    @Produce("direct:demo.test.topic")
+    private PublishInternal producer;
+
     public void hello() {
         System.out.println("hello world");
     }
@@ -235,4 +260,13 @@ class DemoMessageAdapter {
         System.out.println("demo bean test: " + msg);
         return "demo bean test";
     }
+
+    @Transactional
+    public void publishInternal(Message msg, String clz) {
+        producer.sendMsg(msg, clz);
+    }
+}
+
+interface PublishInternal {
+    void sendMsg(@Body Message message, @Header("AvroSchemaClassName") String avroSchemaClassName);
 }
