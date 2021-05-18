@@ -1,13 +1,18 @@
 package io.ttyys.micrc.integration.springboot;
 
+import io.ttyys.micrc.annotations.technology.integration.MessageConsumer;
+import io.ttyys.micrc.annotations.technology.integration.MessageProducer;
 import io.ttyys.micrc.integration.EnableMessagingIntegration;
 import io.ttyys.micrc.integration.route.IntegrationMessagingRouteConfiguration;
 import io.ttyys.micrc.integration.route.IntegrationMessagingRouteTemplateParameterSource;
+import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.beans.factory.support.BeanNameGenerator;
+import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.context.ResourceLoaderAware;
 import org.springframework.context.annotation.ClassPathBeanDefinitionScanner;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
@@ -18,16 +23,23 @@ import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import io.ttyys.micrc.integration.route.IntegrationMessagingRouteConfiguration.IntegrationMessagingProducerDefinition;
 import io.ttyys.micrc.integration.route.IntegrationMessagingRouteConfiguration.IntegrationMessagingConsumerDefinition;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
+@Component
 public class ClassPathIntegrationMessagingScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
 
     private ResourceLoader resourceLoader;
 
+    @SuppressWarnings("unchecked")
     @Override
-    public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
+    public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata,
+                                        BeanDefinitionRegistry registry,
+                                        BeanNameGenerator importBeanNameGenerator) {
         AnnotationAttributes attributes = AnnotationAttributes
                 .fromMap(importingClassMetadata.getAnnotationAttributes(EnableMessagingIntegration.class.getName()));
         assert attributes != null;
@@ -48,13 +60,15 @@ public class ClassPathIntegrationMessagingScannerRegistrar implements ImportBean
         MessageConsumerScanner consumerScanner = new MessageConsumerScanner(registry, source);
         consumerScanner.setResourceLoader(resourceLoader);
         consumerScanner.doScan(basePackages);
-        //noinspection unchecked
+        // registering
         BeanDefinition beanDefinition = BeanDefinitionBuilder
                 .genericBeanDefinition(
                         (Class<IntegrationMessagingRouteTemplateParameterSource>) source.getClass(),
                         () -> source)
                 .getRawBeanDefinition();
-        registry.registerBeanDefinition("integrationMessagingRouteTemplateParameterSource",
+        // remove route template source bean registered from IntegrationMessagingAutoConfiguration
+        registry.removeBeanDefinition("fakeIntegrationMessagingRouteTemplateParameterSource");
+        registry.registerBeanDefinition(importBeanNameGenerator.generateBeanName(beanDefinition, registry),
                 beanDefinition);
     }
 
@@ -66,6 +80,7 @@ public class ClassPathIntegrationMessagingScannerRegistrar implements ImportBean
 
 class MessageProducerScanner extends ClassPathBeanDefinitionScanner {
 
+    private static final AtomicInteger INDEX = new AtomicInteger();
     private final IntegrationMessagingRouteTemplateParameterSource sourceDefinition;
 
     public MessageProducerScanner(BeanDefinitionRegistry registry,
@@ -80,28 +95,22 @@ class MessageProducerScanner extends ClassPathBeanDefinitionScanner {
         return metadata.isInterface() && metadata.isIndependent();
     }
 
+    @SneakyThrows
     @Override
     protected Set<BeanDefinitionHolder> doScan(String... basePackages) {
         this.addIncludeFilter(new AnnotationTypeFilter(MessageProducer.class));
         Set<BeanDefinitionHolder> holders = super.doScan(basePackages);
         for (BeanDefinitionHolder holder : holders) {
-            AnnotatedBeanDefinition annotatedBeanDefinition = (AnnotatedBeanDefinition) holder.getBeanDefinition();
-            AnnotationAttributes attributes = AnnotationAttributes.fromMap(
-                    annotatedBeanDefinition.getMetadata().getAnnotationAttributes(MessageProducer.class.getName()));
-            // todo obtain properties
-            // attributes.getXXX();
-            // method information of target interface
-
+            GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
+            beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
+            MessageProducer messageProducer = beanDefinition.getBeanClass().getAnnotation(MessageProducer.class);
+            sourceDefinition.addParameter(
+                    routeId(messageProducer),
+                    IntegrationMessagingProducerDefinition.builder()
+                            .templateId(IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_PUBLISH_INTERNAL)
+                            .messagePublishEndpoint(messageProducer.messagePublishEndpoint())
+                            .build());
         }
-        // fake data. move the logic to inner of loop
-//        IntegrationMessagingProducerDefinition definition = new IntegrationMessagingProducerDefinition();
-
-        sourceDefinition.addParameter(
-                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_PUBLISH_INTERNAL + "-0",
-                IntegrationMessagingProducerDefinition.builder()
-                        .templateId(IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_PUBLISH_INTERNAL)
-                        .messagePublishEndpoint("demo.test.topic").build());
-
         holders.clear();
         return holders;
     }
@@ -110,10 +119,19 @@ class MessageProducerScanner extends ClassPathBeanDefinitionScanner {
     protected void registerBeanDefinition(BeanDefinitionHolder definitionHolder, BeanDefinitionRegistry routersInfo) {
         // nothing to do. leave it out.
     }
+
+    private String routeId(MessageProducer messageConsumer) {
+        String routeId = messageConsumer.id();
+        if (!StringUtils.hasText(routeId)) {
+            routeId = String.valueOf(INDEX.getAndIncrement());
+        }
+        return IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_PUBLISH_INTERNAL + "-" + routeId;
+    }
 }
 
 class MessageConsumerScanner extends ClassPathBeanDefinitionScanner {
 
+    private final AtomicInteger INDEX = new AtomicInteger();
     private final IntegrationMessagingRouteTemplateParameterSource sourceDefinition;
 
     public MessageConsumerScanner(BeanDefinitionRegistry registry,
@@ -128,28 +146,24 @@ class MessageConsumerScanner extends ClassPathBeanDefinitionScanner {
         return metadata.isInterface() && metadata.isIndependent();
     }
 
+    @SneakyThrows
     @Override
     protected Set<BeanDefinitionHolder> doScan(String... basePackages) {
         this.addIncludeFilter(new AnnotationTypeFilter(MessageConsumer.class));
         Set<BeanDefinitionHolder> holders = super.doScan(basePackages);
         for (BeanDefinitionHolder holder : holders) {
-            AnnotatedBeanDefinition annotatedBeanDefinition = (AnnotatedBeanDefinition) holder.getBeanDefinition();
-            AnnotationAttributes attributes = AnnotationAttributes.fromMap(
-                    annotatedBeanDefinition.getMetadata().getAnnotationAttributes(MessageConsumer.class.getName()));
-            // todo obtain properties
-            // attributes.getXXX();
-
+            GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
+            beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
+            MessageConsumer messageConsumer = beanDefinition.getBeanClass().getAnnotation(MessageConsumer.class);
+            sourceDefinition.addParameter(
+                    routeId(messageConsumer),
+                    IntegrationMessagingConsumerDefinition.builder()
+                            .templateId(IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION)
+                            .topicName(messageConsumer.topicName())
+                            .subscriptionName(messageConsumer.subscriptionName())
+                            .adapterName(messageConsumer.adapterName())
+                            .build());
         }
-
-        // fake data. move the logic to inner of loop
-        sourceDefinition.addParameter(
-                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION + "-0",
-                IntegrationMessagingConsumerDefinition.builder()
-                        .templateId(IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION)
-                        .topicName("test.without.db_tx.topic")
-                        .subscriptionName("test.sub")
-                        .adapterName("demoMessageAdapter").build());
-
         holders.clear();
         return holders;
     }
@@ -158,9 +172,12 @@ class MessageConsumerScanner extends ClassPathBeanDefinitionScanner {
     protected void registerBeanDefinition(BeanDefinitionHolder definitionHolder, BeanDefinitionRegistry routersInfo) {
         // nothing to do. leave it out.
     }
+
+    private String routeId(MessageConsumer messageConsumer) {
+        String routeId = messageConsumer.id();
+        if (!StringUtils.hasText(routeId)) {
+            routeId = String.valueOf(INDEX.getAndIncrement());
+        }
+        return IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION + "-" + routeId;
+    }
 }
-
-// todo move to micrc-annotation then append necessary properties
-@interface MessageProducer {}
-
-@interface MessageConsumer {}

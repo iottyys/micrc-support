@@ -9,7 +9,7 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @Documented
-@Import({ClassPathIntegrationMessagingScannerRegistrar.class, IntegrationMessagingAutoConfiguration.class })
+@Import({ IntegrationMessagingAutoConfiguration.class, ClassPathIntegrationMessagingScannerRegistrar.class })
 public @interface EnableMessagingIntegration {
     String[] basePackages() default {};
 }

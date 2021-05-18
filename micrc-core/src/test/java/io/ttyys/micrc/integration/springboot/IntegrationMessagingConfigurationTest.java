@@ -1,8 +1,9 @@
 package io.ttyys.micrc.integration.springboot;
 
 import com.zaxxer.hikari.HikariDataSource;
-import io.ttyys.micrc.integration.EnableMessagingIntegration;
+import foo.bar.app.IntegrationMessagingTestApplication;
 import io.ttyys.micrc.integration.route.IntegrationMessagingRouteConfiguration;
+import io.ttyys.micrc.integration.springboot.fixtures.DemoMessageAdapter;
 import io.ttyys.micrc.integration.springboot.fixtures.Message;
 import org.apache.activemq.artemis.core.server.embedded.EmbeddedActiveMQ;
 import org.apache.camel.*;
@@ -10,13 +11,12 @@ import org.apache.camel.builder.AdviceWith;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.jms.JmsComponent;
 import org.apache.camel.component.mock.MockEndpoint;
-import org.apache.camel.spring.boot.CamelContextConfiguration;
 import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
 import org.apache.camel.test.spring.junit5.MockEndpoints;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -24,8 +24,6 @@ import org.springframework.integration.jdbc.store.JdbcChannelMessageStore;
 import org.springframework.integration.jdbc.store.channel.H2ChannelMessageStoreQueryProvider;
 import org.springframework.jms.connection.JmsTransactionManager;
 import org.springframework.orm.jpa.JpaTransactionManager;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import javax.jms.ConnectionFactory;
 
@@ -36,8 +34,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @CamelSpringBootTest
 @MockEndpoints("direct:end*")
-@SpringBootApplication
-@EnableMessagingIntegration(basePackages = "io.ttyys.micrc.integration")
+@SpringBootTest(classes = {
+        IntegrationMessagingConfigurationTest.ConfigurationTestConfiguration.class,
+        IntegrationMessagingTestApplication.ConfigurationTestApplication.class,
+        DemoMessageAdapter.class
+})
 public class IntegrationMessagingConfigurationTest {
     @Autowired
     private CamelContext context;
@@ -169,104 +170,31 @@ public class IntegrationMessagingConfigurationTest {
         mockEndpointSync.assertIsSatisfied();
         routeMock.assertIsSatisfied();
     }
-}
 
-@Configuration
-@Import(DataSourceAutoConfiguration.class)
-class ConfigurationTestConfiguration extends RouteBuilder {
-    @Override
-    public void configure() {
-        from("direct:end").log("end");
-        from("direct:end-sync").log("end-sync");
+    @Configuration
+    @Import(DataSourceAutoConfiguration.class)
+    static class ConfigurationTestConfiguration extends RouteBuilder {
+        @Override
+        public void configure() {
+            from("direct:end").log("end");
+            from("direct:end-sync").log("end-sync");
 
-        from("direct:start")
-                .to("direct:end");
+            from("direct:start")
+                    .to("direct:end");
 
-        from("direct:avro").marshal().avro("io.ttyys.micrc.integration.springboot.fixtures.Message");
+            from("direct:avro").marshal().avro("io.ttyys.micrc.integration.springboot.fixtures.Message");
 
-        from("subscribe:topic:demo.test.topic?subscriptionName=demo.test.topic.module1")
-                .to("bean:demoMessageAdapter?method=hello")
-                .to("direct:end");
+            from("subscribe:topic:demo.test.topic?subscriptionName=demo.test.topic.module1")
+                    .to("bean:demoMessageAdapter?method=hello")
+                    .to("direct:end");
 
-        from("subscribe:topic:demo.test.topic?subscriptionName=demo.test.topic.module2")
-                .to("bean:demoMessageAdapter?method=demo")
-                .to("direct:end");
+            from("subscribe:topic:demo.test.topic?subscriptionName=demo.test.topic.module2")
+                    .to("bean:demoMessageAdapter?method=demo")
+                    .to("direct:end");
 
-        from("direct:module1.demo.test.topic")
-                .to("publish:topic:demo.test.topic")
-                .to("direct:end-sync");
+            from("direct:module1.demo.test.topic")
+                    .to("publish:topic:demo.test.topic")
+                    .to("direct:end-sync");
+        }
     }
-
-    @Bean
-    CamelContextConfiguration contextConfiguration() {
-        return new CamelContextConfiguration() {
-            @Override
-            public void beforeApplicationStart(CamelContext camelContext) {
-//                TemplatedRouteBuilder
-//                        .builder(camelContext,
-//                                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION)
-//                        .parameter("topicName", "test.without.db_tx.topic")
-//                        // clientId和subscriptionName共同唯一确定一个broker持久化队列，服务重启后，使用这个队列继续获取消息
-//                        // 确保同一个订阅，这两个属性是稳定不变的，否则会丢失消息。服务升级也要确保消费完所有队列的消息才能停机
-//                        // subscriptionName必须以业务服务包名前缀保持全局唯一
-//                        .parameter("subscriptionName", "test.sub")
-//                        .parameter("adapterName", "demoMessageAdapter")
-//                        .parameter("end", "direct:end")
-//                        .add();
-//
-//                TemplatedRouteBuilder
-//                        .builder(camelContext,
-//                                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_PUBLISH_INTERNAL)
-//                        .parameter("messagePublishEndpoint", "demo.test.topic")
-//                        .parameter("end", "direct:end-sync")
-//                        .add();
-            }
-
-            @Override
-            public void afterApplicationStart(CamelContext camelContext) {
-            }
-        };
-    }
-
-    @Bean
-    public JdbcChannelMessageStore jdbcChannelMessageStore(HikariDataSource dataSource) {
-        JdbcChannelMessageStore store = new JdbcChannelMessageStore();
-        store.setDataSource(dataSource);
-        store.setChannelMessageStoreQueryProvider(new H2ChannelMessageStoreQueryProvider());
-        store.setPriorityEnabled(true);
-        return store;
-    }
-}
-
-@SuppressWarnings("unused")
-@Component
-class DemoMessageAdapter {
-
-    @Produce("direct:demo.test.topic")
-    private PublishInternal producer;
-
-    public void hello() {
-        System.out.println("hello world");
-    }
-    public String demo(String msg) {
-        System.out.println("demo test: " + msg);
-        return "demo test";
-    }
-    public String demo(byte[] msg) {
-        System.out.println("demo test: " + msg.length);
-        return "demo test";
-    }
-    public String demo(Message msg) {
-        System.out.println("demo bean test: " + msg);
-        return "demo bean test";
-    }
-
-    @Transactional
-    public void publishInternal(Message msg, String clz) {
-        producer.sendMsg(msg, clz);
-    }
-}
-
-interface PublishInternal {
-    void sendMsg(@Body Message message, @Header("AvroSchemaClassName") String avroSchemaClassName);
 }

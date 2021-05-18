@@ -16,6 +16,7 @@ import org.apache.activemq.artemis.jms.server.config.TopicConfiguration;
 import org.apache.activemq.artemis.jms.server.config.impl.JMSConfigurationImpl;
 import org.apache.activemq.artemis.jms.server.config.impl.JMSQueueConfigurationImpl;
 import org.apache.activemq.artemis.jms.server.config.impl.TopicConfigurationImpl;
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -82,6 +83,15 @@ class ArtemisEmbeddedServerConfiguration {
     }
 
     private void standardServerConfiguration(org.apache.activemq.artemis.core.config.Configuration configuration) {
+        AddressSettings addressSettings = configuration.getAddressesSettings().get("#");
+        if (!SystemUtils.IS_OS_LINUX) {
+            configuration.setJournalType(JournalType.NIO);
+        }
+        configuration.setGracefulShutdownEnabled(true);
+
+        // duplicate detection for message sending
+        configuration.setPersistIDCache(true);
+        configuration.setIDCacheSize(200000);
         // todo 可靠投递 -- 不考虑集群下的共享存储，使用列队复制。考虑k8s部署场景
 //        configuration.setPersistenceEnabled(true);
         configuration.setJournalDirectory("");
@@ -90,12 +100,14 @@ class ArtemisEmbeddedServerConfiguration {
         configuration.setLargeMessagesDirectory("");
         configuration.setNodeManagerLockDirectory("");
         // todo dlq 设置 -- 每个地址应该都有自己的DLQ，方便管理维护
-//        AddressSettings addressSettings = configuration.getAddressesSettings().get("#");
 //        addressSettings.setAutoCreateDeadLetterResources(true);
 //        addressSettings.setDeadLetterQueuePrefix(new SimpleString(""));
 //        addressSettings.setDeadLetterQueueSuffix(new SimpleString(".DLQ"));
 //        addressSettings.set
-        // todo 发送消重
+        // message groups and re-balancing
+        addressSettings.setDefaultGroupRebalance(true);
+        addressSettings.setDefaultGroupRebalancePauseDispatch(true);
+        addressSettings.setDefaultGroupBuckets(20);
         // todo 组建集群 -- 针对当前服务负载均衡和多服务情况下的队列复制
         // todo HA -- ActiveMQClient.createServerLocatorWithoutHA不影响，服务本身HA，不影响发送接收消息
     }

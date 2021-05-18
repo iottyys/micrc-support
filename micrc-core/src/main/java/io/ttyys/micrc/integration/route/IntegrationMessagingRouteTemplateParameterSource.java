@@ -26,4 +26,8 @@ public class IntegrationMessagingRouteTemplateParameterSource implements RouteTe
     public void addParameter(String routeId, AbstractIntegrationMessagingDefinition definition) {
         parameters.put(routeId, definition);
     }
+
+    public AbstractIntegrationMessagingDefinition parameter(String routeId) {
+        return parameters.get(routeId);
+    }
 }

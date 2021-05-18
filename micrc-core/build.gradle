@@ -11,7 +11,7 @@ sourceCompatibility = '1.8'
 targetCompatibility = '1.8'
 
 ext {
-    set('camelVersion', '3.9.0')
+    set('camelVersion', '3.7.4')
 }
 
 repositories {
@@ -30,23 +30,24 @@ dependencyManagement {
 }
 
 dependencies {
+    // annotation
     implementation "io.ttyys.micrc:micrc-annotations:0.0.1-SNAPSHOT"
 
+    // persistence
     implementation "org.springframework.boot:spring-boot-starter-data-jpa"
 
-    implementation "org.springframework.boot:spring-boot-starter-integration"
-    implementation "org.springframework.integration:spring-integration-jdbc"
-
+    // integration
     implementation "org.apache.camel.springboot:camel-spring-boot-starter"
     implementation "org.apache.camel.springboot:camel-bean-starter"
     implementation "org.apache.camel.springboot:camel-avro-starter"
     implementation "org.apache.camel.springboot:camel-avro-rpc-starter"
     implementation "org.apache.camel.springboot:camel-jms-starter"
-    implementation "org.apache.camel.springboot:camel-jpa-starter"
     implementation "org.apache.camel.springboot:camel-spring-integration-starter"
     testImplementation "org.apache.camel:camel-test-spring-junit5"
+    implementation "org.springframework.boot:spring-boot-starter-integration"
+    implementation "org.springframework.integration:spring-integration-jdbc"
 
-
+    // messaging
     implementation "org.springframework.boot:spring-boot-starter-artemis"
     implementation "org.apache.activemq:artemis-jms-server"
 
@@ -54,9 +55,12 @@ dependencies {
     compileOnly "org.projectlombok:lombok"
     annotationProcessor "org.projectlombok:lombok"
 
+    // unit and integration test
     testImplementation('org.springframework.boot:spring-boot-starter-test')
+    implementation "com.h2database:h2"
 
-    runtimeOnly "com.h2database:h2"
+    // database migration
+//    implementation "org.liquibase:liquibase-core"
 }
 
 test {

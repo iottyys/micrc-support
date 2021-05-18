@@ -1,8 +1,9 @@
 package io.ttyys.micrc.integration.route;
 
 import com.zaxxer.hikari.HikariDataSource;
-import io.ttyys.micrc.integration.EnableMessagingIntegration;
+import foo.bar.app.IntegrationMessagingTestApplication;
 import io.ttyys.micrc.integration.route.fixtures.CustomerRepository;
+import io.ttyys.micrc.integration.route.fixtures.DemoTxMessageAdapter;
 import io.ttyys.micrc.integration.route.fixtures.Message;
 import org.apache.activemq.artemis.api.core.client.ClientMessage;
 import org.apache.activemq.artemis.api.core.client.ClientRequestor;
@@ -15,16 +16,13 @@ import org.apache.activemq.artemis.jms.client.ActiveMQSession;
 import org.apache.camel.*;
 import org.apache.camel.builder.AdviceWith;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.builder.TemplatedRouteBuilder;
 import org.apache.camel.component.mock.MockEndpoint;
-import org.apache.camel.spring.boot.CamelContextConfiguration;
 import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
 import org.apache.camel.test.spring.junit5.MockEndpoints;
 import org.junit.jupiter.api.*;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -35,22 +33,24 @@ import org.springframework.integration.jdbc.store.JdbcChannelMessageStore;
 import org.springframework.integration.jdbc.store.channel.H2ChannelMessageStoreQueryProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jms.connection.CachingConnectionFactory;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SuppressWarnings({"SqlNoDataSourceInspection", "SqlDialectInspection"})
-@CamelSpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@MockEndpoints("direct:end")
-@SpringBootApplication
-@EnableMessagingIntegration(basePackages = "io.ttyys.micrc.integration")
+@CamelSpringBootTest
+@MockEndpoints("direct:end*")
+@SpringBootTest(classes = {
+        IntegrationMessagingTransactionTest.ConfigurationTestConfiguration.class,
+        IntegrationMessagingTestApplication.TransactionTestApplication.class,
+        DemoTxMessageAdapter.class
+}, properties = { "logging.level.root=DEBUG" })
 public class IntegrationMessagingTransactionTest {
 
     @Autowired
@@ -67,9 +67,38 @@ public class IntegrationMessagingTransactionTest {
     private MockEndpoint mock;
 
     @BeforeEach
-    public void resetMock() {
+    public void resetMock() throws Exception {
         mock.reset();
         jdbcTemplate.execute("DELETE FROM INT_CHANNEL_MESSAGE");
+        AdviceWith.adviceWith(context,
+                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_PUBLISH_INTERNAL + "-test",
+                true,
+                a -> a.weaveAddLast().to("direct:end-sync").id("direct:end-sync"));
+        AdviceWith.adviceWith(context,
+                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION + "-test",
+                true,
+                a -> a.weaveAddLast().to("seda:end").id("seda:end"));
+    }
+
+    @AfterEach
+    public void clearAdvice() throws Exception {
+        AdviceWith.adviceWith(context,
+                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_PUBLISH_INTERNAL + "-test",
+                true,
+                a -> a.weaveById("direct:end-sync").remove());
+        AdviceWith.adviceWith(context,
+                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION + "-test",
+                true,
+                a -> a.weaveById("seda:end").remove());
+        try {
+            AdviceWith.adviceWith(context,
+                    IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION + "-test",
+                    true,
+                    a -> a.weaveById("exception").selectFirst().remove());
+            AdviceWith.adviceWith(context,
+                    IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION + "-test",
+                    a -> a.weaveById("process:exception").selectLast().remove());
+        } catch (Exception ignore) {}
     }
 
     @Test
@@ -78,8 +107,7 @@ public class IntegrationMessagingTransactionTest {
         Map<String, Object> headers = new HashMap<>();
         headers.put("CamelBeanMethodName",
                 "fakeTxOp(org.apache.camel.Exchange)");
-        headers.put("AvroSchemaClassName",
-                "io.ttyys.micrc.integration.springboot.fixtures.Message");
+        headers.put("AvroSchemaClassName", Message.class.getName());
         mock.setAssertPeriod(5000);
         mock.expectedMessageCount(1);
         mock.expectedHeaderReceived("result", 0L);
@@ -90,17 +118,17 @@ public class IntegrationMessagingTransactionTest {
     }
 
     @Test
-    @Order(2)
     public void testSubscribeWithDbRollbackToFailConsistent() throws Exception {
         AdviceWith.adviceWith(context,
-                "test-consumer",
-                a -> a.weaveAddFirst().onException(RuntimeException.class).handled(false).to("seda:end"));
+                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION + "-test",
+                true,
+                a -> a.weaveAddFirst().onException(RuntimeException.class).id("exception").handled(false).to("seda:end"));
         Map<String, Object> headers = new HashMap<>();
         headers.put("CamelBeanMethodName", "fakeTxRbOp(org.apache.camel.Exchange)");
-        headers.put("AvroSchemaClassName", "io.ttyys.micrc.integration.springboot.fixtures.Message");
+        headers.put("AvroSchemaClassName", Message.class.getName());
         mock.setAssertPeriod(5000);
-        mock.expectedMinimumMessageCount(1);
-        mock.expectedHeaderReceived("result", 1L);
+        mock.expectedMinimumMessageCount(2);
+        mock.message(0).header("result").isGreaterThanOrEqualTo(1);
         byte[] o1 = template.requestBody("direct:avro",
                 Message.newBuilder().setFrom("test from").setBody("test body").setTo("test to").build(), byte[].class);
         template.sendBodyAndHeaders("publish:topic:test.tx.topic", o1, headers);
@@ -108,23 +136,26 @@ public class IntegrationMessagingTransactionTest {
     }
 
     @Test
-    @Order(3)
     public void testSubscribeWithJmsRollbackToDuplication() throws Exception {
-        AdviceWith.adviceWith(context, "test-consumer", a -> a.weaveAddLast().process(exchange -> {
-            throw new Exception("simulating message ack error after tx of db commit. ");
-        }));
+        AdviceWith.adviceWith(context,
+                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION + "-test",
+                a -> a.weaveAddLast().process(exchange -> {
+                    throw new Exception("simulating message ack error after tx of db commit. ");
+                }).id("process:exception"));
         Map<String, Object> headers = new HashMap<>();
         headers.put("CamelBeanMethodName",
                 "fakeTxOp(org.apache.camel.Exchange)");
-        headers.put("AvroSchemaClassName",
-                "io.ttyys.micrc.integration.springboot.fixtures.Message");
+        headers.put("AvroSchemaClassName", Message.class.getName());
         mock.setAssertPeriod(5000);
-        mock.expectedMinimumMessageCount(1);
-        mock.expectedHeaderReceived("result", 2L);
+        mock.expectedMinimumMessageCount(2); // broker redelivery again and again
+        mock.message(0).header("result").isGreaterThanOrEqualTo(1);
         byte[] o1 = template.requestBody("direct:avro",
                 Message.newBuilder().setFrom("test from").setBody("test body").setTo("test to").build(), byte[].class);
         template.sendBodyAndHeaders("publish:topic:test.tx.topic", o1, headers);
         mock.assertIsSatisfied();
+        List<Exchange> list = mock.getReceivedExchanges();
+        assertThat(list.get(0).getIn().getHeader("JMSMessageID"))
+                .isEqualTo(list.get(1).getIn().getHeader("JMSMessageID"));
     }
 
     @Autowired
@@ -183,179 +214,71 @@ public class IntegrationMessagingTransactionTest {
         mock.message(1).header("result").isEqualTo(1);
         mock.assertIsSatisfied();
     }
-}
 
-@Configuration
-@Import(DataSourceAutoConfiguration.class)
-class ConfigurationTestConfiguration extends RouteBuilder {
+    @Configuration
+    @Import(DataSourceAutoConfiguration.class)
+    static class ConfigurationTestConfiguration extends RouteBuilder {
+        @Override
+        public void configure() {
+            // retrieve message count for check tx submit or rollback with subscribe
+            from("seda:end").delay(3000).process(exchange -> {
+                ActiveMQConnection connection = exchange.getProperty("connection", ActiveMQConnection.class);
+                ActiveMQSession session = (ActiveMQSession) connection.createSession();
+                ClientSession clientSession = session.getCoreSession();
+                ClientRequestor requestor = new ClientRequestor(clientSession, "activemq.management");
+                ClientMessage message = clientSession.createMessage(false);
+                ManagementHelper.putAttribute(message, ResourceNames.QUEUE + ".test\\.sub", "durableMessageCount");
+                clientSession.start();
+                ClientMessage reply = requestor.request(message);
+                Long count = (Long) ManagementHelper.getResult(reply);
+                ManagementHelper.putAttribute(message, ResourceNames.QUEUE + "DLQ", "durableMessageCount");
+                ClientMessage replyDLQ = requestor.request(message);
+                Long countDLQ = (Long) ManagementHelper.getResult(replyDLQ);
+                exchange.getIn().setHeader("result", count + countDLQ);
+                requestor.close();
+                session.close();
+                connection.close();
+            }).to("direct:end").log("async end");
 
-    @Override
-    public void configure() {
-        // retrieve message count for check tx submit or rollback with subscribe
-        from("seda:end").delay(3000).process(exchange -> {
-            ActiveMQConnection connection = exchange.getProperty("connection", ActiveMQConnection.class);
-            ActiveMQSession session = (ActiveMQSession) connection.createSession();
-            ClientSession clientSession = session.getCoreSession();
-            ClientRequestor requestor = new ClientRequestor(clientSession, "activemq.management");
-            ClientMessage message = clientSession.createMessage(false);
-            ManagementHelper.putAttribute(message, ResourceNames.QUEUE + ".test\\.sub", "durableMessageCount");
-            clientSession.start();
-            ClientMessage reply = requestor.request(message);
-            Long count = (Long) ManagementHelper.getResult(reply);
-            ManagementHelper.putAttribute(message, ResourceNames.QUEUE + "DLQ", "durableMessageCount");
-            ClientMessage replyDLQ = requestor.request(message);
-            Long countDLQ = (Long) ManagementHelper.getResult(replyDLQ);
-            exchange.getIn().setHeader("result", count + countDLQ);
-            requestor.close();
-            session.close();
-            connection.close();
-        }).to("direct:end").log("async end");
+            // retrieve message count for check tx submit or rollback with publish
+            from("seda:end-pub").delay(3000).process(exchange -> {
+                ActiveMQConnection connection = exchange.getProperty("connection", ActiveMQConnection.class);
+                ActiveMQSession session = (ActiveMQSession) connection.createSession();
+                ClientSession clientSession = session.getCoreSession();
+                ClientRequestor requestor = new ClientRequestor(clientSession, "activemq.management");
+                ClientMessage message = clientSession.createMessage(false);
+                ManagementHelper.putAttribute(message, ResourceNames.QUEUE + ".test", "durableMessageCount");
+                clientSession.start();
+                ClientMessage reply = requestor.request(message);
+                Long count = (Long) ManagementHelper.getResult(reply);
+                ManagementHelper.putAttribute(message, ResourceNames.QUEUE + "DLQ", "durableMessageCount");
+                ClientMessage replyDLQ = requestor.request(message);
+                Long countDLQ = (Long) ManagementHelper.getResult(replyDLQ);
+                exchange.getIn().setHeader("result", count + countDLQ);
+                requestor.close();
+                session.close();
+                connection.close();
+            }).to("direct:end").log("async end-pub");
 
-        // retrieve message count for check tx submit or rollback with publish
-        from("seda:end-pub").delay(3000).process(exchange -> {
-            ActiveMQConnection connection = exchange.getProperty("connection", ActiveMQConnection.class);
-            ActiveMQSession session = (ActiveMQSession) connection.createSession();
-            ClientSession clientSession = session.getCoreSession();
-            ClientRequestor requestor = new ClientRequestor(clientSession, "activemq.management");
-            ClientMessage message = clientSession.createMessage(false);
-            ManagementHelper.putAttribute(message, ResourceNames.QUEUE + ".test", "durableMessageCount");
-            clientSession.start();
-            ClientMessage reply = requestor.request(message);
-            Long count = (Long) ManagementHelper.getResult(reply);
-            ManagementHelper.putAttribute(message, ResourceNames.QUEUE + "DLQ", "durableMessageCount");
-            ClientMessage replyDLQ = requestor.request(message);
-            Long countDLQ = (Long) ManagementHelper.getResult(replyDLQ);
-            exchange.getIn().setHeader("result", count + countDLQ);
-            requestor.close();
-            session.close();
-            connection.close();
-        }).to("direct:end").log("async end-pub");
+            from("direct:end").log("sync end");
+            from("direct:end-sync").log("end-sync");
 
-        from("direct:end").log("sync end");
-        from("direct:end-sync").log("end-sync");
+            from("direct:start")
+                    .to("direct:end");
 
-        from("direct:start")
-                .to("direct:end");
+            // simulating error remain the message in queue for counting check
+            from("subscribe:topic:demo.test.topic?subscriptionName=test").process(exchange -> {
+                throw new RuntimeException();
+            });
 
-        // simulating error remain the message in queue for counting check
-        from("subscribe:topic:demo.test.topic?subscriptionName=test").process(exchange -> {
-            throw new RuntimeException();
-        });
+            from("direct:avro").marshal().avro(Message.class.getName());
+        }
 
-        from("direct:avro").marshal().avro("io.ttyys.micrc.integration.springboot.fixtures.Message");
-    }
-
-    @Bean
-    CamelContextConfiguration contextConfiguration() {
-        return new CamelContextConfiguration() {
-            @Override
-            public void beforeApplicationStart(CamelContext camelContext) {
-                TemplatedRouteBuilder
-                        .builder(camelContext,
-                                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION)
-                        .routeId("test-consumer")
-                        .parameter("topicName", "test.tx.topic")
-                        .parameter("subscriptionName", "test.sub")
-                        .parameter("adapterName", "demoTxMessageAdapter")
-                        .parameter("end", "seda:end")
-                        .add();
-
-                TemplatedRouteBuilder
-                        .builder(camelContext,
-                                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_PUBLISH_INTERNAL)
-                        .routeId("test-producer")
-                        .parameter("messagePublishEndpoint", "demo.test.topic")
-                        .parameter("end", "direct:end-sync")
-                        .add();
-            }
-
-            @Override
-            public void afterApplicationStart(CamelContext camelContext) {
-            }
-        };
-    }
-
-    @Bean
-    public JdbcChannelMessageStore jdbcChannelMessageStore(HikariDataSource dataSource) {
-        JdbcChannelMessageStore store = new JdbcChannelMessageStore();
-        store.setDataSource(dataSource);
-        store.setChannelMessageStoreQueryProvider(new H2ChannelMessageStoreQueryProvider());
-        store.setPriorityEnabled(true);
-        return store;
-    }
-
-    @Bean
-    public Jackson2RepositoryPopulatorFactoryBean getRepositoryPopulator() {
-        Jackson2RepositoryPopulatorFactoryBean factory = new Jackson2RepositoryPopulatorFactoryBean();
-        factory.setResources(new Resource[]{new ClassPathResource("customer-data.json")});
-        return factory;
-    }
-}
-
-@Component
-class DemoTxMessageAdapter {
-
-    @SuppressWarnings("unused")
-    @Transactional
-    public void fakeTxOp(Exchange exchange) throws Exception {
-        this.setConnection(exchange);
-        LoggerFactory.getLogger(DemoTxMessageAdapter.class).debug("==============fake tx op");
-    }
-
-    @SuppressWarnings("unused")
-    @Transactional
-    public void fakeTxRbOp(Exchange exchange) throws Exception {
-        this.setConnection(exchange);
-        throw new RuntimeException("simulating exception for rollback transaction. ");
-    }
-
-    @SuppressWarnings("unused")
-    @Produce("direct:start")
-    private SimulatingProducer basicProducer;
-
-    @SuppressWarnings("unused")
-    @Produce("direct:demo.test.topic")
-    private SimulatingProducer producer;
-
-    @Transactional
-    public void basicProduce() {
-        basicProducer.sendMsg(
-                Message.newBuilder()
-                        .setFrom("test produce from")
-                        .setTo("test produce to")
-                        .setBody("test produce body")
-                        .build(), "");
-    }
-
-    @Autowired
-    private CustomerRepository repository;
-
-    @Transactional
-    public void fakeServiceSendMsg() {
-        repository.deleteAll();
-        producer.sendMsg(
-                Message.newBuilder()
-                        .setFrom("test produce from")
-                        .setTo("test produce to")
-                        .setBody("test produce body")
-                        .build(), "io.ttyys.micrc.integration.route.fixtures.Message");
-    }
-
-    private void setConnection(Exchange exchange) throws Exception {
-        Map<Object, Object> resourceMap = TransactionSynchronizationManager.getResourceMap();
-        for (Map.Entry<Object, Object> entry : resourceMap.entrySet()) {
-            Object key = entry.getKey();
-            if (key instanceof CachingConnectionFactory) {
-                ActiveMQConnectionFactory factory = (ActiveMQConnectionFactory) ((CachingConnectionFactory) key).getTargetConnectionFactory();
-                assert factory != null;
-                ActiveMQConnection connection = (ActiveMQConnection) factory.createConnection();
-                exchange.setProperty("connection", connection);
-                return;
-            }
+        @Bean
+        public Jackson2RepositoryPopulatorFactoryBean getRepositoryPopulator() {
+            Jackson2RepositoryPopulatorFactoryBean factory = new Jackson2RepositoryPopulatorFactoryBean();
+            factory.setResources(new Resource[]{new ClassPathResource("customer-data.json")});
+            return factory;
         }
     }
-}
-
-interface SimulatingProducer {
-    void sendMsg(@Body Message message, @Header("AvroSchemaClassName") String schemaClassName);
 }

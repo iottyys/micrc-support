@@ -1,0 +1,4 @@
+org.springframework.boot.env.EnvironmentPostProcessor=\
+  io.ttyys.micrc.core.MicrcCoreEnvironmentProcessor,\
+  io.ttyys.micrc.integration.springboot.IntegrationEnvironmentProcessor,\
+  io.ttyys.micrc.persistence.springboot.PersistenceEnvironmentProcessor
