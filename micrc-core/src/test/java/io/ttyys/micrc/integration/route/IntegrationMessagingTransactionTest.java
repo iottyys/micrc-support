@@ -1,6 +1,5 @@
 package io.ttyys.micrc.integration.route;
 
-import com.zaxxer.hikari.HikariDataSource;
 import foo.bar.app.IntegrationMessagingTestApplication;
 import io.ttyys.micrc.integration.route.fixtures.CustomerRepository;
 import io.ttyys.micrc.integration.route.fixtures.DemoTxMessageAdapter;
@@ -29,8 +28,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.repository.init.Jackson2RepositoryPopulatorFactoryBean;
-import org.springframework.integration.jdbc.store.JdbcChannelMessageStore;
-import org.springframework.integration.jdbc.store.channel.H2ChannelMessageStoreQueryProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jms.connection.CachingConnectionFactory;
 import org.springframework.transaction.support.TransactionSynchronizationManager;

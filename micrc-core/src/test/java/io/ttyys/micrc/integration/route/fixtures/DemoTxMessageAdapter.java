@@ -70,7 +70,7 @@ public class DemoTxMessageAdapter {
     public void sendMsg100Only() {
         for (int i = 0; i < 100; i++) {
             producer.sendMsg(
-                    Message.newBuilder().setTo("to " + i).setFrom("from " + 1).setBody("body " + 1).build(),
+                    Message.newBuilder().setTo("to " + i).setFrom("from " + i).setBody("body " + i).build(),
                     Message.class.getName());
         }
     }

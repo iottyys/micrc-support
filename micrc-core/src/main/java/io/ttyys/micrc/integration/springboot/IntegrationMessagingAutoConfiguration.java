@@ -147,7 +147,7 @@ public class IntegrationMessagingAutoConfiguration {
                 determineDevDatabase(beanFactory)
                         ? new H2ChannelMessageStoreQueryProvider()
                         : new MySqlChannelMessageStoreQueryProvider());
-        store.setTablePrefix("TEST_");
+//        store.setTablePrefix("TEST_");
         return store;
     }
 

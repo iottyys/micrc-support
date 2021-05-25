@@ -11,7 +11,8 @@ sourceCompatibility = '1.8'
 targetCompatibility = '1.8'
 
 ext {
-    set('camelVersion', '3.7.4')
+    set('camel.version', '3.7.4')
+    set('artemis.version', '2.17.0')
 }
 
 repositories {
@@ -25,7 +26,7 @@ jar.enabled = true
 dependencyManagement {
     imports {
         //noinspection GrUnresolvedAccess
-        mavenBom "org.apache.camel.springboot:camel-spring-boot-bom:${camelVersion}"
+        mavenBom "org.apache.camel.springboot:camel-spring-boot-bom:${property('camel.version')}"
     }
 }
 
@@ -35,6 +36,7 @@ dependencies {
 
     // persistence
     implementation "org.springframework.boot:spring-boot-starter-data-jpa"
+    implementation "com.h2database:h2"
 
     // integration
     implementation "org.apache.camel.springboot:camel-spring-boot-starter"
@@ -42,6 +44,7 @@ dependencies {
     implementation "org.apache.camel.springboot:camel-avro-starter"
     implementation "org.apache.camel.springboot:camel-avro-rpc-starter"
     implementation "org.apache.camel.springboot:camel-jms-starter"
+    implementation "org.apache.camel.springboot:camel-sql-starter"
     implementation "org.apache.camel.springboot:camel-spring-integration-starter"
     testImplementation "org.apache.camel:camel-test-spring-junit5"
     implementation "org.springframework.boot:spring-boot-starter-integration"
@@ -50,14 +53,15 @@ dependencies {
     // messaging
     implementation "org.springframework.boot:spring-boot-starter-artemis"
     implementation "org.apache.activemq:artemis-jms-server"
+    testImplementation "org.apache.activemq:artemis-junit:${property('artemis.version')}"
 
     // for lombok
     compileOnly "org.projectlombok:lombok"
     annotationProcessor "org.projectlombok:lombok"
 
     // unit and integration test
-    testImplementation('org.springframework.boot:spring-boot-starter-test')
-    implementation "com.h2database:h2"
+    testImplementation "org.springframework.boot:spring-boot-starter-test"
+//    testImplementation "org.junit.vintage:junit-vintage-engine:5.7.0"
 
     // database migration
 //    implementation "org.liquibase:liquibase-core"

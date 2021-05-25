@@ -39,4 +39,15 @@ public class IntegrationMessagingTestApplication {
     @EntityScan("io.ttyys.micrc.integration.route.fixtures")
     @EnableMessagingIntegration(basePackages = { "io.ttyys.micrc.integration.route.fixtures" })
     public static class PriorityTestApplication {}
+
+    @Configuration
+    @EnableAutoConfiguration
+    @ComponentScan(basePackages = { "io.ttyys.micrc.integration.route.fixtures" },
+            excludeFilters = { @ComponentScan.Filter(type = FilterType.CUSTOM, classes = TypeExcludeFilter.class),
+                    @ComponentScan.Filter(type = FilterType.CUSTOM, classes = AutoConfigurationExcludeFilter.class) })
+    @EnableJpaRepositories("io.ttyys.micrc.integration.route.fixtures")
+    @EntityScan("io.ttyys.micrc.integration.route.fixtures")
+    @EnableMessagingIntegration(basePackages = { "io.ttyys.micrc.integration.route.fixtures" })
+    public static class DuplicateTestApplication {
+    }
 }

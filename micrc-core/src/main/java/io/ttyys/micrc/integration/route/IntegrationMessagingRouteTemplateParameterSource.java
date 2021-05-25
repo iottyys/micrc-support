@@ -12,9 +12,9 @@ import io.ttyys.micrc.integration.route.IntegrationMessagingRouteConfiguration.A
 public class IntegrationMessagingRouteTemplateParameterSource implements RouteTemplateParameterSource {
     private final Map<String, AbstractIntegrationMessagingDefinition> parameters = new LinkedHashMap<>();
 
+    @SuppressWarnings("unchecked")
     @Override
     public Map<String, Object> parameters(String routeId) {
-        //noinspection unchecked
         return new ObjectMapper().convertValue(parameters.get(routeId), LinkedHashMap.class);
     }
 
