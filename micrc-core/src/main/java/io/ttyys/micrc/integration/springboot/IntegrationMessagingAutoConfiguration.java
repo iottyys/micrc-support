@@ -2,6 +2,8 @@ package io.ttyys.micrc.integration.springboot;
 
 import io.ttyys.micrc.integration.route.IntegrationMessagingRouteConfiguration;
 import io.ttyys.micrc.integration.route.IntegrationMessagingRouteTemplateParameterSource;
+import io.ttyys.micrc.integration.route.JdbcPartitionChannelMessageStore;
+import io.ttyys.micrc.integration.route.store.MessagePartitionRowMapper;
 import io.ttyys.micrc.persistence.springboot.PersistenceAutoConfiguration;
 import org.apache.activemq.artemis.api.core.TransportConfiguration;
 import org.apache.activemq.artemis.api.core.client.ActiveMQClient;
@@ -42,7 +44,6 @@ import org.springframework.integration.dsl.IntegrationFlows;
 import org.springframework.integration.dsl.MessageChannels;
 import org.springframework.integration.dsl.Pollers;
 import org.springframework.integration.dsl.context.IntegrationFlowContext;
-import org.springframework.integration.jdbc.store.JdbcChannelMessageStore;
 import org.springframework.integration.jdbc.store.channel.H2ChannelMessageStoreQueryProvider;
 import org.springframework.integration.jdbc.store.channel.MySqlChannelMessageStoreQueryProvider;
 import org.springframework.integration.transaction.TransactionInterceptorBuilder;
@@ -138,15 +139,16 @@ public class IntegrationMessagingAutoConfiguration {
         return new IntegrationMessagingRouteTemplateParameterSource();
     }
 
-    @Bean("jdbcChannelMessageStore")
-    public JdbcChannelMessageStore jdbcChannelMessageStore(DefaultListableBeanFactory beanFactory) {
-        JdbcChannelMessageStore store = new JdbcChannelMessageStore();
+    @Bean("jdbcPartitionChannelMessageStore")
+    public JdbcPartitionChannelMessageStore jdbcPartitionChannelMessageStore(DefaultListableBeanFactory beanFactory) {
+        JdbcPartitionChannelMessageStore store = new JdbcPartitionChannelMessageStore();
         store.setDataSource(beanFactory.getBean(DataSource.class));
         store.setPriorityEnabled(true);
         store.setChannelMessageStoreQueryProvider(
                 determineDevDatabase(beanFactory)
                         ? new H2ChannelMessageStoreQueryProvider()
                         : new MySqlChannelMessageStoreQueryProvider());
+        store.setMessageRowMapper(new MessagePartitionRowMapper());
 //        store.setTablePrefix("TEST_");
         return store;
     }
@@ -160,7 +162,7 @@ public class IntegrationMessagingAutoConfiguration {
     @Order
     public CamelContextConfiguration contextConfiguration(IntegrationFlowContext context,
                                                    DefaultListableBeanFactory beanFactory,
-                                                   JdbcChannelMessageStore jdbcChannelMessageStore,
+                                                   JdbcPartitionChannelMessageStore jdbcPartitionChannelMessageStore,
                                                    ChainedTransactionManager outboundChainedTxManager,
                                                    IntegrationMessagingRouteTemplateParameterSource source) {
         return new CamelContextConfiguration() {
@@ -178,7 +180,7 @@ public class IntegrationMessagingAutoConfiguration {
                         registerMessageStoreIntegrationFlow(
                                 context,
                                 beanFactory,
-                                jdbcChannelMessageStore,
+                                jdbcPartitionChannelMessageStore,
                                 outboundChainedTxManager,
                                 ((IntegrationMessagingRouteConfiguration.IntegrationMessagingProducerDefinition) definition).getMessagePublishEndpoint());
                     }
@@ -201,7 +203,7 @@ public class IntegrationMessagingAutoConfiguration {
     @SuppressWarnings("unchecked")
     private void registerMessageStoreIntegrationFlow(IntegrationFlowContext context,
                                                      DefaultListableBeanFactory beanFactory,
-                                                     JdbcChannelMessageStore jdbcChannelMessageStore,
+                                                     JdbcPartitionChannelMessageStore jdbcChannelMessageStore,
                                                      ChainedTransactionManager outboundChainedTxManager,
                                                      String topicName) {
         MessageChannel channel = MessageChannels
