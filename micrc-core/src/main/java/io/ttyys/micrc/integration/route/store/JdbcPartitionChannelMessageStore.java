@@ -1,4 +1,4 @@
-package io.ttyys.micrc.integration.route;
+package io.ttyys.micrc.integration.route.store;
 
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.core.log.LogAccessor;
@@ -7,7 +7,6 @@ import org.springframework.core.serializer.Serializer;
 import org.springframework.core.serializer.support.SerializingConverter;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.integration.jdbc.store.channel.ChannelMessageStorePreparedStatementSetter;
-import org.springframework.integration.jdbc.store.channel.ChannelMessageStoreQueryProvider;
 import org.springframework.integration.jdbc.store.channel.MessageRowMapper;
 import org.springframework.integration.store.MessageGroup;
 import org.springframework.integration.store.MessageGroupFactory;
@@ -50,7 +49,10 @@ public class JdbcPartitionChannelMessageStore implements PartitionCapableChannel
         POLL_WITH_EXCLUSIONS,
         PRIORITY,
         PRIORITY_WITH_EXCLUSIONS,
-        DELETE_MESSAGE
+        DELETE_MESSAGE,
+        POLL_PARTITION_OFFSET,
+        UPDATE_PARTITION_OFFSET,
+        INSERT_PARTITION_OFFSET
     }
 
     private final Set<String> idCache = new HashSet<>();
@@ -61,7 +63,7 @@ public class JdbcPartitionChannelMessageStore implements PartitionCapableChannel
 
     private final Lock idCacheWriteLock = this.idCacheLock.writeLock();
 
-    private ChannelMessageStoreQueryProvider channelMessageStoreQueryProvider;
+    private PartitionChannelMessageStoreQueryProvider channelMessageStoreQueryProvider;
 
     private String region = DEFAULT_REGION;
 
@@ -217,7 +219,7 @@ public class JdbcPartitionChannelMessageStore implements PartitionCapableChannel
         this.preparedStatementSetter = preparedStatementSetter;
     }
 
-    public void setChannelMessageStoreQueryProvider(ChannelMessageStoreQueryProvider channelMessageStoreQueryProvider) {
+    public void setChannelMessageStoreQueryProvider(PartitionChannelMessageStoreQueryProvider channelMessageStoreQueryProvider) {
         Assert.notNull(channelMessageStoreQueryProvider,
                 "The provided channelMessageStoreQueryProvider must not be null.");
         this.channelMessageStoreQueryProvider = channelMessageStoreQueryProvider;
@@ -322,8 +324,8 @@ public class JdbcPartitionChannelMessageStore implements PartitionCapableChannel
                 }
             }
             messages = namedParameterJdbcTemplate.query(query, parameters, this.messageRowMapper);
-            if (this.partitionEnabled) {
-                // 
+            if (this.isPartitionEnabled()) {
+                partitionProcess(messages, namedParameterJdbcTemplate, groupIdKey);
             }
         }
         finally {
@@ -354,6 +356,42 @@ public class JdbcPartitionChannelMessageStore implements PartitionCapableChannel
             return message;
         }
         return null;
+    }
+
+    private void partitionProcess(List<Message<?>> messages, NamedParameterJdbcTemplate namedParameterJdbcTemplate,
+                                  String groupIdKey) {
+        Assert.state(messages.size() < 2,
+                () -> "The query must return zero or 1 row; got " + messages.size() + " rows");
+        if (messages.size() > 0) {
+            final Message<?> message = messages.get(0);
+            String partitionKey = message.getHeaders().get(MESSAGE_HEADER_PARTITION_KEY, String.class);
+            if (!StringUtils.hasText(partitionKey)) {
+                message.getHeaders().put(MESSAGE_HEADER_PARTITION_ID, MESSAGE_HEADER_PARTITION_DEFAULT_ID);
+                return;
+            }
+            String partitionIdKey = getKey(partitionKey);
+            message.getHeaders().put(MESSAGE_HEADER_PARTITION_ID, partitionIdKey);
+            Long sequence = message.getHeaders().get(MESSAGE_HEADER_PARTITION_SEQUENCE, Long.class);
+            Assert.state(sequence != null,
+                    "Message that support partition must has header: "
+                            + MESSAGE_HEADER_PARTITION_SEQUENCE + " with non-null value. ");
+            MapSqlParameterSource parameters = new MapSqlParameterSource();
+            parameters.addValue("region", this.region);
+            parameters.addValue("group_key", groupIdKey);
+            parameters.addValue("partition_key", partitionKey);
+            Long preSequence = namedParameterJdbcTemplate.queryForObject(getQuery(Query.POLL_PARTITION_OFFSET,
+                    () -> this.channelMessageStoreQueryProvider.getPartitionOffsetQuery()), parameters, Long.class);
+            parameters.addValue("partition_sequence", sequence);
+            if (preSequence == null) {
+                namedParameterJdbcTemplate.update(getQuery(Query.INSERT_PARTITION_OFFSET,
+                        () -> this.channelMessageStoreQueryProvider.getCreatePartitionOffsetQuery()), parameters);
+                message.getHeaders().put(MESSAGE_HEADER_PARTITION_OFFSET, 0);
+                return;
+            }
+            namedParameterJdbcTemplate.update(getQuery(Query.UPDATE_PARTITION_OFFSET,
+                    () -> this.channelMessageStoreQueryProvider.getUpdatePartitionOffsetQuery()), parameters);
+            message.getHeaders().put(MESSAGE_HEADER_PARTITION_OFFSET, sequence - preSequence);
+        }
     }
 
     private boolean doRemoveMessageFromGroup(Object groupId, Message<?> messageToRemove) {

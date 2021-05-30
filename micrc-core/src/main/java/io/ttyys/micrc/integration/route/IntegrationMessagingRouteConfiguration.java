@@ -1,11 +1,13 @@
 package io.ttyys.micrc.integration.route;
 
+import io.ttyys.micrc.integration.route.idempotent.JdbcMessageIdempotentRepository;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
 import org.apache.activemq.artemis.api.core.Message;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.builder.RouteBuilder;
+import org.springframework.context.annotation.Bean;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 

@@ -2,8 +2,13 @@ package io.ttyys.micrc.integration.springboot;
 
 import io.ttyys.micrc.integration.route.IntegrationMessagingRouteConfiguration;
 import io.ttyys.micrc.integration.route.IntegrationMessagingRouteTemplateParameterSource;
-import io.ttyys.micrc.integration.route.JdbcPartitionChannelMessageStore;
+import io.ttyys.micrc.integration.route.idempotent.H2MessageIdempotentQueryProvider;
+import io.ttyys.micrc.integration.route.idempotent.JdbcMessageIdempotentRepository;
+import io.ttyys.micrc.integration.route.idempotent.MySqlMessageIdempotentQueryProvider;
+import io.ttyys.micrc.integration.route.store.H2ChannelMessageStoreQueryProvider;
+import io.ttyys.micrc.integration.route.store.JdbcPartitionChannelMessageStore;
 import io.ttyys.micrc.integration.route.store.MessagePartitionRowMapper;
+import io.ttyys.micrc.integration.route.store.MySqlChannelMessageStoreQueryProvider;
 import io.ttyys.micrc.persistence.springboot.PersistenceAutoConfiguration;
 import org.apache.activemq.artemis.api.core.TransportConfiguration;
 import org.apache.activemq.artemis.api.core.client.ActiveMQClient;
@@ -44,8 +49,6 @@ import org.springframework.integration.dsl.IntegrationFlows;
 import org.springframework.integration.dsl.MessageChannels;
 import org.springframework.integration.dsl.Pollers;
 import org.springframework.integration.dsl.context.IntegrationFlowContext;
-import org.springframework.integration.jdbc.store.channel.H2ChannelMessageStoreQueryProvider;
-import org.springframework.integration.jdbc.store.channel.MySqlChannelMessageStoreQueryProvider;
 import org.springframework.integration.transaction.TransactionInterceptorBuilder;
 import org.springframework.jms.connection.CachingConnectionFactory;
 import org.springframework.jms.connection.JmsTransactionManager;
@@ -143,7 +146,6 @@ public class IntegrationMessagingAutoConfiguration {
     public JdbcPartitionChannelMessageStore jdbcPartitionChannelMessageStore(DefaultListableBeanFactory beanFactory) {
         JdbcPartitionChannelMessageStore store = new JdbcPartitionChannelMessageStore();
         store.setDataSource(beanFactory.getBean(DataSource.class));
-        store.setPriorityEnabled(true);
         store.setChannelMessageStoreQueryProvider(
                 determineDevDatabase(beanFactory)
                         ? new H2ChannelMessageStoreQueryProvider()
@@ -151,6 +153,19 @@ public class IntegrationMessagingAutoConfiguration {
         store.setMessageRowMapper(new MessagePartitionRowMapper());
 //        store.setTablePrefix("TEST_");
         return store;
+    }
+
+    @Bean
+    public JdbcMessageIdempotentRepository jdbcMessageIdempotentRepository(DefaultListableBeanFactory beanFactory) {
+        JdbcMessageIdempotentRepository repository = new JdbcMessageIdempotentRepository();
+        repository.setDataSource(beanFactory.getBean(DataSource.class));
+        repository.setMessageIdempotentQueryProvider(
+                determineDevDatabase(beanFactory)
+                        ? new H2MessageIdempotentQueryProvider()
+                        : new MySqlMessageIdempotentQueryProvider());
+//        repository.setTablePrefix("TEST_");
+        repository.setSequenceEnabled(true);
+        return repository;
     }
 
     @Bean
@@ -207,8 +222,10 @@ public class IntegrationMessagingAutoConfiguration {
                                                      ChainedTransactionManager outboundChainedTxManager,
                                                      String topicName) {
         MessageChannel channel = MessageChannels
-                .priority(BUFFERED_MESSAGE_STORE_CHANNEL_PREFIX + topicName)
-                .messageStore(jdbcChannelMessageStore, MESSAGE_STORE_PRODUCER_GROUP_PREFIX + topicName)
+                .queue(
+                        BUFFERED_MESSAGE_STORE_CHANNEL_PREFIX + topicName,
+                        jdbcChannelMessageStore,
+                        MESSAGE_STORE_PRODUCER_GROUP_PREFIX + topicName)
                 .get();
         BeanDefinition beanDefinition = BeanDefinitionBuilder
                 .genericBeanDefinition(
