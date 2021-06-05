@@ -11,16 +11,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.concurrent.CountDownLatch;
-
 @CamelSpringBootTest
 @MockEndpoints("direct:end*")
 @SpringBootTest(classes = {
-        IntegrationMessagingPriorityTest.ConfigurationTestConfiguration.class,
-        IntegrationMessagingTestApplication.PriorityTestApplication.class,
+        IntegrationMessagingOrderTest.ConfigurationTestConfiguration.class,
+        IntegrationMessagingTestApplication.OrderTestApplication.class,
         DemoTxMessageAdapter.class
 }, properties = { "logging.level.org.apache.activemq=DEBUG" })
-public class IntegrationMessagingPriorityTest {
+public class IntegrationMessagingOrderTest {
 
     @Autowired
     private DemoTxMessageAdapter messageAdapter;

@@ -87,15 +87,6 @@ public class IntegrationMessagingTransactionTest {
                 IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION + "-test",
                 true,
                 a -> a.weaveById("seda:end").remove());
-        try {
-            AdviceWith.adviceWith(context,
-                    IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION + "-test",
-                    true,
-                    a -> a.weaveById("exception").selectFirst().remove());
-            AdviceWith.adviceWith(context,
-                    IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION + "-test",
-                    a -> a.weaveById("process:exception").selectLast().remove());
-        } catch (Exception ignore) {}
     }
 
     @Test
@@ -130,6 +121,10 @@ public class IntegrationMessagingTransactionTest {
                 Message.newBuilder().setFrom("test from").setBody("test body").setTo("test to").build(), byte[].class);
         template.sendBodyAndHeaders("publish:topic:test.tx.topic", o1, headers);
         mock.assertIsSatisfied();
+        AdviceWith.adviceWith(context,
+                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION + "-test",
+                true,
+                a -> a.weaveById("exception").remove());
     }
 
     @Test
@@ -153,6 +148,9 @@ public class IntegrationMessagingTransactionTest {
         List<Exchange> list = mock.getReceivedExchanges();
         assertThat(list.get(0).getIn().getHeader("JMSMessageID"))
                 .isEqualTo(list.get(1).getIn().getHeader("JMSMessageID"));
+        AdviceWith.adviceWith(context,
+                IntegrationMessagingRouteConfiguration.ROUTE_TMPL_MESSAGE_SUBSCRIPTION + "-test",
+                a -> a.weaveById("process:exception").remove());
     }
 
     @Autowired

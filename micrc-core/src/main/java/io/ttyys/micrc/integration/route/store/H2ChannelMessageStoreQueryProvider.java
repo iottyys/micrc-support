@@ -6,10 +6,13 @@ public class H2ChannelMessageStoreQueryProvider extends AbstractChannelMessageSt
 		implements PartitionChannelMessageStoreQueryProvider {
 
 	private static final String SELECT_COMMON =
-			"SELECT %PREFIX%CHANNEL_MESSAGE.MESSAGE_ID, %PREFIX%CHANNEL_MESSAGE.MESSAGE_BYTES " +
+			"SELECT %PREFIX%CHANNEL_MESSAGE.MESSAGE_ID, %PREFIX%CHANNEL_MESSAGE.MESSAGE_BYTES, " +
+					"%PREFIX%CHANNEL_MESSAGE.MESSAGE_SEQUENCE, %PREFIX%CHANNEL_MESSAGE.CREATED_DATE " +
 					"FROM %PREFIX%CHANNEL_MESSAGE " +
 					"WHERE %PREFIX%CHANNEL_MESSAGE.GROUP_KEY = :group_key " +
 						"AND %PREFIX%CHANNEL_MESSAGE.REGION = :region ";
+
+	private static final String LOCK_SUFFIX = "FOR UPDATE NOWAIT";
 
 	@Override
 	public String getCreateMessageQuery() {
@@ -24,7 +27,7 @@ public class H2ChannelMessageStoreQueryProvider extends AbstractChannelMessageSt
 				"AND %PREFIX%CHANNEL_MESSAGE.MESSAGE_ID not in (:message_ids) " +
 				"ORDER BY CREATED_DATE, MESSAGE_SEQUENCE " +
 				"LIMIT 1 " +
-				"FOR UPDATE";
+				LOCK_SUFFIX;
 	}
 
 	@Override
@@ -32,7 +35,7 @@ public class H2ChannelMessageStoreQueryProvider extends AbstractChannelMessageSt
 		return SELECT_COMMON +
 				"ORDER BY CREATED_DATE, MESSAGE_SEQUENCE " +
 				"LIMIT 1 " +
-				"FOR UPDATE";
+				LOCK_SUFFIX;
 	}
 
 	@Override
@@ -41,7 +44,7 @@ public class H2ChannelMessageStoreQueryProvider extends AbstractChannelMessageSt
 				"AND %PREFIX%CHANNEL_MESSAGE.MESSAGE_ID NOT IN (:message_ids) " +
 				"ORDER BY MESSAGE_PRIORITY DESC NULLS LAST, CREATED_DATE, MESSAGE_SEQUENCE " +
 				"LIMIT 1 " +
-				"FOR UPDATE";
+				LOCK_SUFFIX;
 	}
 
 	@Override
@@ -49,7 +52,7 @@ public class H2ChannelMessageStoreQueryProvider extends AbstractChannelMessageSt
 		return SELECT_COMMON +
 				"ORDER BY MESSAGE_PRIORITY DESC NULLS LAST, CREATED_DATE, MESSAGE_SEQUENCE " +
 				"LIMIT 1 " +
-				"FOR UPDATE";
+				LOCK_SUFFIX;
 	}
 
 	@Override
@@ -59,7 +62,7 @@ public class H2ChannelMessageStoreQueryProvider extends AbstractChannelMessageSt
 				"WHERE %PREFIX%CHANNEL_MESSAGE_PARTITION.GROUP_KEY = :group_key " +
 					"AND %PREFIX%CHANNEL_MESSAGE_PARTITION.REGION = :region " +
 					"AND %PREFIX%CHANNEL_MESSAGE_PARTITION.PARTITION_KEY = :partition_key " +
-				"FOR UPDATE";
+				LOCK_SUFFIX;
 	}
 
 	@Override

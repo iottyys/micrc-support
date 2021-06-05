@@ -208,9 +208,9 @@ public class IntegrationMessagingAutoConfiguration {
     @Bean
     public TaskExecutor taskExecutor() {
         ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
-        taskExecutor.setCorePoolSize(2);
-        taskExecutor.setMaxPoolSize(2);
-        taskExecutor.setQueueCapacity(2);
+        taskExecutor.setCorePoolSize(20);
+        taskExecutor.setMaxPoolSize(20);
+        taskExecutor.setQueueCapacity(20);
         taskExecutor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         return taskExecutor;
     }
@@ -240,7 +240,7 @@ public class IntegrationMessagingAutoConfiguration {
                                 .maxMessagesPerPoll(-1)
                                 .transactional(new TransactionInterceptorBuilder()
                                         .transactionManager(outboundChainedTxManager)
-                                        .timeout(determineDevDatabase(beanFactory) ? 0 : -1)
+//                                        .timeout(determineDevDatabase(beanFactory) ? 1000 : -1)
                                         .readOnly(false)
                                         .propagation(Propagation.REQUIRES_NEW)
                                         .build()).taskExecutor(taskExecutor())))

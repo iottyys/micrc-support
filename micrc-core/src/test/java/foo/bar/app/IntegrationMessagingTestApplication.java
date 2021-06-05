@@ -38,7 +38,7 @@ public class IntegrationMessagingTestApplication {
     @EnableJpaRepositories("io.ttyys.micrc.integration.route.fixtures")
     @EntityScan("io.ttyys.micrc.integration.route.fixtures")
     @EnableMessagingIntegration(basePackages = { "io.ttyys.micrc.integration.route.fixtures" })
-    public static class PriorityTestApplication {}
+    public static class OrderTestApplication {}
 
     @Configuration
     @EnableAutoConfiguration

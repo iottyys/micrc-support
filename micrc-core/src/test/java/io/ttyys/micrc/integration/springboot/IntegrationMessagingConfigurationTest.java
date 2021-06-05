@@ -1,6 +1,5 @@
 package io.ttyys.micrc.integration.springboot;
 
-import com.zaxxer.hikari.HikariDataSource;
 import foo.bar.app.IntegrationMessagingTestApplication;
 import io.ttyys.micrc.integration.route.IntegrationMessagingRouteConfiguration;
 import io.ttyys.micrc.integration.springboot.fixtures.DemoMessageAdapter;
@@ -17,11 +16,8 @@ import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
-import org.springframework.integration.jdbc.store.JdbcChannelMessageStore;
-import org.springframework.integration.jdbc.store.channel.H2ChannelMessageStoreQueryProvider;
 import org.springframework.jms.connection.JmsTransactionManager;
 import org.springframework.orm.jpa.JpaTransactionManager;
 
@@ -38,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         IntegrationMessagingConfigurationTest.ConfigurationTestConfiguration.class,
         IntegrationMessagingTestApplication.ConfigurationTestApplication.class,
         DemoMessageAdapter.class
-})
+}, properties = { "logging.level.root=DEBUG" })
 public class IntegrationMessagingConfigurationTest {
     @Autowired
     private CamelContext context;
@@ -173,7 +169,7 @@ public class IntegrationMessagingConfigurationTest {
 
     @Configuration
     @Import(DataSourceAutoConfiguration.class)
-    static class ConfigurationTestConfiguration extends RouteBuilder {
+    public static class ConfigurationTestConfiguration extends RouteBuilder {
         @Override
         public void configure() {
             from("direct:end").log("end");
