@@ -1,4 +1,4 @@
 /**
- * 幂等消息及严格顺序处理
+ * 幂等消息处理，通过消息分区支持严格顺序
  */
 package io.ttyys.micrc.integration.route.idempotent;
