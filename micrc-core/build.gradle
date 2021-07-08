@@ -13,6 +13,8 @@ targetCompatibility = '1.8'
 ext {
     set('camel.version', '3.7.4')
     set('artemis.version', '2.17.0')
+    set('lombok.version', '1.18.20')
+    set('mapstruct.version', '1.4.2.Final')
 }
 
 repositories {
@@ -46,6 +48,7 @@ dependencies {
     implementation "org.apache.camel.springboot:camel-jms-starter"
     implementation "org.apache.camel.springboot:camel-sql-starter"
     implementation "org.apache.camel.springboot:camel-spring-integration-starter"
+    implementation "org.apache.camel:camel-bean-validator"
     testImplementation "org.apache.camel:camel-test-spring-junit5"
     implementation "org.springframework.boot:spring-boot-starter-integration"
     implementation "org.springframework.integration:spring-integration-jdbc"
@@ -56,12 +59,23 @@ dependencies {
     testImplementation "org.apache.activemq:artemis-junit:${property('artemis.version')}"
 
     // for lombok
-    compileOnly "org.projectlombok:lombok"
-    annotationProcessor "org.projectlombok:lombok"
+    implementation "org.projectlombok:lombok:${property('lombok.version')}"
+    annotationProcessor "org.projectlombok:lombok:${property('lombok.version')}"
+
+    implementation "org.mapstruct:mapstruct:${property('mapstruct.version')}"
+    annotationProcessor "org.mapstruct:mapstruct-processor:${property('mapstruct.version')}"
+    testAnnotationProcessor "org.mapstruct:mapstruct-processor:${property('mapstruct.version')}"
+
+
+    // for database
+    runtimeOnly "com.h2database:h2"
 
     // unit and integration test
     testImplementation "org.springframework.boot:spring-boot-starter-test"
     testImplementation "org.junit.vintage:junit-vintage-engine:5.7.0"
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
 
     // database migration
 //    implementation "org.liquibase:liquibase-core"

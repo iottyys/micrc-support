@@ -5,14 +5,18 @@ import io.ttyys.micrc.integration.route.IntegrationMessagingRouteConfiguration;
 import io.ttyys.micrc.integration.springboot.fixtures.DemoMessageAdapter;
 import io.ttyys.micrc.integration.springboot.fixtures.Message;
 import org.apache.activemq.artemis.core.server.embedded.EmbeddedActiveMQ;
-import org.apache.camel.*;
+import org.apache.camel.CamelContext;
+import org.apache.camel.EndpointInject;
+import org.apache.camel.ProducerTemplate;
 import org.apache.camel.builder.AdviceWith;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.jms.JmsComponent;
 import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
 import org.apache.camel.test.spring.junit5.MockEndpoints;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,7 +26,6 @@ import org.springframework.jms.connection.JmsTransactionManager;
 import org.springframework.orm.jpa.JpaTransactionManager;
 
 import javax.jms.ConnectionFactory;
-
 import java.util.HashMap;
 import java.util.Map;
 

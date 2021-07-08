@@ -32,7 +32,7 @@ public class LocalMessageRouterBuilder implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        // 通过路由模版以及携带信息构造消路由
+        // 通过路由模版以及携带信息构造消费路由
         localConsumerRoutesInfo.getRoutesInfo().stream().forEach(routeInfo ->
                 TemplatedRouteBuilder
                         .builder(camelContext, "localConsumerRouteTemplate")
