@@ -16,6 +16,8 @@ repositories {
 
 jar.enabled = true
 
+// 使用publishing中的publishToMavenLocal任务
+// https://docs.gradle.org/current/userguide/publishing_maven.html#publishing_maven
 publishing {
     publications {
         //noinspection GroovyAssignabilityCheck
@@ -24,20 +26,5 @@ publishing {
             from components.java
         }
     }
-
-    repositories {
-        mavenCentral {
-        }
-    }
 }
 
-// 使用publishing中的publishToMavenLocal任务
-// https://docs.gradle.org/current/userguide/publishing_maven.html#publishing_maven
-//uploadArchives {
-//    repositories {
-//        /**配置Maven部署器，将工件上传到本地目录，这里是放到与该项目同级目录的repo目录下*/
-//        mavenDeployer {
-//            repository(url: "file://" + new File("../../repo").getAbsolutePath())
-//        }
-//    }
-//}

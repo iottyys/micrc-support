@@ -4,7 +4,7 @@ plugins {
     id 'java'
     id 'idea'
     id 'java-gradle-plugin'
-    id "maven"
+    id 'maven-publish'
 }
 
 group 'io.ttyys.micrc'
@@ -45,15 +45,6 @@ dependencies {
     compile("com.squareup:javapoet:${javapoetVersion}")
 }
 
-uploadArchives {
-    repositories {
-        /**配置Maven部署器，将工件上传到本地目录，这里是放到与该项目同级目录的repo目录下*/
-        mavenDeployer {
-            repository(url: "file://" + new File("../../repo").getAbsolutePath())
-        }
-    }
-}
-
 gradlePlugin {
     plugins {
         "code-generator" {
@@ -63,6 +54,17 @@ gradlePlugin {
         "service-integration" {
             id = 'io.ttyys.gradle.codegen.integration-gradle-plugin'
             implementationClass = 'io.ttyys.micrc.codegen.gradle.plugin.integration.ServiceIntegrationPlugin'
+        }
+    }
+}
+// 使用publishing中的publishToMavenLocal任务
+// https://docs.gradle.org/current/userguide/publishing_maven.html#publishing_maven
+publishing {
+    publications {
+        //noinspection GroovyAssignabilityCheck
+        maven(MavenPublication) {
+            //noinspection GroovyAssignabilityCheck
+            from components.java
         }
     }
 }
