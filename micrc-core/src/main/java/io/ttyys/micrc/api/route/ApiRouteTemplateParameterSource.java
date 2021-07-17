@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class ApiRouteTemplateParameterSource implements RouteTemplateParameterSource {
-    private final Map<String, ApiRouteConfiguration.ApiDefinition> parameters = new LinkedHashMap<>();
+    private final Map<String, ApiRouteConfiguration.AbstractApiDefinition> parameters = new LinkedHashMap<>();
 
     @SuppressWarnings("unchecked")
     @Override
@@ -21,11 +21,11 @@ public class ApiRouteTemplateParameterSource implements RouteTemplateParameterSo
         return parameters.keySet();
     }
 
-    public void addParameter(String routeId, ApiRouteConfiguration.ApiDefinition definition) {
+    public void addParameter(String routeId, ApiRouteConfiguration.AbstractApiDefinition definition) {
         parameters.put(routeId, definition);
     }
 
-    public ApiRouteConfiguration.ApiDefinition parameter(String routeId) {
+    public ApiRouteConfiguration.AbstractApiDefinition parameter(String routeId) {
         return parameters.get(routeId);
     }
 }

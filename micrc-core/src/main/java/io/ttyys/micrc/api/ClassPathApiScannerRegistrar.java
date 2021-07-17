@@ -1,6 +1,7 @@
 package io.ttyys.micrc.api;
 
 import io.ttyys.micrc.annotations.runtime.ApiLogic;
+import io.ttyys.micrc.annotations.runtime.ApiQuery;
 import io.ttyys.micrc.api.route.ApiRouteConfiguration;
 import io.ttyys.micrc.api.route.ApiRouteTemplateParameterSource;
 import lombok.SneakyThrows;
@@ -50,7 +51,7 @@ public class ClassPathApiScannerRegistrar implements ImportBeanDefinitionRegistr
         }
         ApiRouteTemplateParameterSource source = new ApiRouteTemplateParameterSource();
 
-        ApiLogicScanner apiLogicScanner = new ApiLogicScanner(registry, source);
+        ApiScanner apiLogicScanner = new ApiScanner(registry, source);
         apiLogicScanner.setResourceLoader(resourceLoader);
         apiLogicScanner.doScan(basePackages);
         // registering
@@ -71,12 +72,12 @@ public class ClassPathApiScannerRegistrar implements ImportBeanDefinitionRegistr
     }
 }
 
-class ApiLogicScanner extends ClassPathBeanDefinitionScanner {
+class ApiScanner extends ClassPathBeanDefinitionScanner {
 
     private static final AtomicInteger INDEX = new AtomicInteger();
     private final ApiRouteTemplateParameterSource sourceDefinition;
 
-    public ApiLogicScanner(BeanDefinitionRegistry registry,
+    public ApiScanner(BeanDefinitionRegistry registry,
                            ApiRouteTemplateParameterSource source) {
         super(registry, false);
         this.sourceDefinition = source;
@@ -96,21 +97,34 @@ class ApiLogicScanner extends ClassPathBeanDefinitionScanner {
             beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
 
             ReflectionUtils.doWithLocalMethods(beanDefinition.getBeanClass(), method -> {
+                ApiRouteConfiguration.AbstractApiDefinition definition;
                 ApiLogic apiLogic = method.getAnnotation(ApiLogic.class);
                 if (apiLogic != null) {
-                    sourceDefinition.addParameter(
-                            routeId(apiLogic),
-                            ApiRouteConfiguration.ApiDefinition.builder()
-                                    .templateId(ApiRouteConfiguration.ROUTE_TMPL_API_RPC)
-                                    .id(apiLogic.id())
-                                    .targetParamMappingBean(apiLogic.targetParamMappingBean())
-                                    .targetParamMappingMethod(apiLogic.targetParamMappingMethod())
-                                    .targetService(apiLogic.targetService())
-                                    .targetMethod(apiLogic.targetMethod())
-                                    .returnDataMappingBean(apiLogic.returnDataMappingBean())
-                                    .returnDataMappingMethod(apiLogic.returnDataMappingMethod())
-                                    .build());
+                    definition = ApiRouteConfiguration.ApiLogicDefinition
+                            .builder()
+                            .templateId(ApiRouteConfiguration.ROUTE_TMPL_API_LOGIC_RPC)
+                            .id(String.format("%s.%s", apiLogic.serviceName(), apiLogic.methodName()))
+                            .serviceName(apiLogic.serviceName())
+                            .methodName(apiLogic.methodName())
+                            .mappingBean(apiLogic.mappingBean())
+                            .mappingMethod(apiLogic.mappingMethod())
+                            .build();
+                    sourceDefinition.addParameter(routeId(apiLogic), definition);
                 }
+                ApiQuery apiQuery = method.getAnnotation(ApiQuery.class);
+                if (apiQuery != null) {
+                    definition = ApiRouteConfiguration.ApiQueryDefinition
+                            .builder()
+                            .templateId(ApiRouteConfiguration.ROUTE_TMPL_API_QUERY_RPC)
+                            .id(String.format("%s.%s", apiQuery.serviceName(), apiQuery.methodName()))
+                            .serviceName(apiQuery.serviceName())
+                            .methodName(apiQuery.methodName())
+                            .mappingBean(apiQuery.mappingBean())
+                            .mappingMethod(apiQuery.mappingMethod())
+                            .build();
+                    sourceDefinition.addParameter(routeId(apiQuery), definition);
+                }
+
             });
         }
         holders.clear();
@@ -123,11 +137,19 @@ class ApiLogicScanner extends ClassPathBeanDefinitionScanner {
     }
 
     private String routeId(ApiLogic apiLogic) {
-        String routeId = apiLogic.id();
+        String routeId = String.format("%s.%s", apiLogic.serviceName(), apiLogic.methodName());
         if (!StringUtils.hasText(routeId)) {
             routeId = String.valueOf(INDEX.getAndIncrement());
         }
-        return ApiRouteConfiguration.ROUTE_TMPL_API_RPC + "-" + routeId;
+        return ApiRouteConfiguration.ROUTE_TMPL_API_LOGIC_RPC + "-" + routeId;
+    }
+
+    private String routeId(ApiQuery apiQuery) {
+        String routeId = String.format("%s.%s", apiQuery.serviceName(), apiQuery.methodName());
+        if (!StringUtils.hasText(routeId)) {
+            routeId = String.valueOf(INDEX.getAndIncrement());
+        }
+        return ApiRouteConfiguration.ROUTE_TMPL_API_QUERY_RPC + "-" + routeId;
     }
 }
 

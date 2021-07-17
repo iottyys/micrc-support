@@ -5,7 +5,7 @@ plugins {
 }
 
 group 'io.ttyys.micrc'
-version '0.0.1-SNAPSHOT'
+version '0.0.2-SNAPSHOT'
 sourceCompatibility = '1.8'
 targetCompatibility = '1.8'
 
@@ -16,9 +16,35 @@ repositories {
 
 jar.enabled = true
 
+ext {
+    // 稳定版仓库地址
+    set('releasesRepositoryUrl', "http://192.168.31.138:8081/repository/maven-releases/")
+    // 测试版仓库地址
+    set('snapshotsRepositoryUrl', "http://192.168.31.138:8081/repository/maven-snapshots/")
+    // nexus用户名
+    set('nexusUser', "admin")
+    // nexus密码
+    set('nexusPasswd', "105115Fc")
+}
+
 // 使用publishing中的publishToMavenLocal任务
 // https://docs.gradle.org/current/userguide/publishing_maven.html#publishing_maven
 publishing {
+    repositories {
+        maven {
+            if (project.version.toString().endsWith("-SNAPSHOT")) {
+                name = "snapshotsRepo"
+                url = uri("${property('snapshotsRepositoryUrl')}")
+            } else {
+                name = "releasesRepo"
+                url = uri("${property('releasesRepositoryUrl')}")
+            }
+            credentials {
+                username = "${property('nexusUser')}"
+                password = "${property('nexusPasswd')}"
+            }
+        }
+    }
     publications {
         //noinspection GroovyAssignabilityCheck
         maven(MavenPublication) {

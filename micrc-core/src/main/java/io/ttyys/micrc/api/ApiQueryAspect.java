@@ -1,10 +1,9 @@
 package io.ttyys.micrc.api;
 
 import com.google.common.collect.ImmutableMap;
-import io.ttyys.micrc.annotations.runtime.ApiLogic;
+import io.ttyys.micrc.annotations.runtime.ApiQuery;
 import io.ttyys.micrc.api.common.dto.Result;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.camel.CamelExecutionException;
 import org.apache.camel.Endpoint;
 import org.apache.camel.EndpointInject;
 import org.apache.camel.ProducerTemplate;
@@ -12,7 +11,6 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
-import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.Map;
@@ -26,9 +24,8 @@ import java.util.Map;
  * @Date 2018年1月14日
  */
 @Aspect
-@Component
 @Slf4j
-public class ApiAspect {
+public class ApiQueryAspect {
     public static final String POINT = "direct:io.ttyys.micrc.api.route.ApiRouteConfiguration";
 
     @EndpointInject(property = "point")
@@ -38,12 +35,12 @@ public class ApiAspect {
         return POINT;
     }
 
-    @Pointcut("@annotation(io.ttyys.micrc.annotations.runtime.ApiLogic)")
+    @Pointcut("@annotation(io.ttyys.micrc.annotations.runtime.ApiQuery)")
     public void apiPointCut() {
     }
 
-    @Around("apiPointCut() && @annotation(apiLogic)")
-    public Object around(ProceedingJoinPoint point, ApiLogic apiLogic) {
+    @Around("apiPointCut() && @annotation(apiQuery)")
+    public Object around(ProceedingJoinPoint point, ApiQuery apiQuery) {
         long beginTime = System.currentTimeMillis();
         //执行方法
 //        Object result = point.proceed();
@@ -51,19 +48,17 @@ public class ApiAspect {
 
         Object body = this.handleRequestBody(point);
         Map<String, Object> headers = ImmutableMap.<String, Object>builder()
-                .put("id", apiLogic.id())
-                .put("targetParamMappingBean", apiLogic.targetParamMappingBean())
-                .put("targetParamMappingMethod", apiLogic.targetParamMappingMethod())
-                .put("targetService", apiLogic.targetService())
-                .put("targetMethod", apiLogic.targetMethod())
-                .put("returnDataMappingBean", apiLogic.returnDataMappingBean())
-                .put("returnDataMappingMethod", apiLogic.returnDataMappingMethod())
+                .put("id", String.format("%s.%s", apiQuery.serviceName(), apiQuery.methodName()))
+                .put("serviceName", apiQuery.serviceName())
+                .put("methodName", apiQuery.methodName())
+                .put("mappingBean", apiQuery.mappingBean())
+                .put("mappingMethod", apiQuery.mappingMethod())
                 .build();
         long time = System.currentTimeMillis() - beginTime;
-        log.info("exec times: {}", time);
+        log.info("query times: {}", time);
 
         try {
-            Endpoint endpoint = getCurrentEndpoint(apiLogic);
+            Endpoint endpoint = getCurrentEndpoint(apiQuery);
             Object result = this.producer.requestBodyAndHeaders(endpoint, body, headers);
             return Result.OK(result);
         } catch (Exception e) {
@@ -71,10 +66,10 @@ public class ApiAspect {
         }
     }
 
-    private Endpoint getCurrentEndpoint(ApiLogic apiLogic) {
+    private Endpoint getCurrentEndpoint(ApiQuery apiQuery) {
         Collection<Endpoint> endpoints = this.producer.getCamelContext().getEndpoints();
         for (Endpoint endpoint : endpoints) {
-            if (endpoint.getEndpointUri().endsWith(apiLogic.id())) {
+            if (endpoint.getEndpointUri().endsWith(String.format("%s.%s", apiQuery.serviceName(), apiQuery.methodName()))) {
                 return endpoint;
             }
         }

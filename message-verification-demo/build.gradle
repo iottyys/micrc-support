@@ -30,7 +30,7 @@ ext {
 }
 
 springBoot {
-    mainClassName='com.snszyk.iiot.lim.quota.QuotaServiceApplication'
+    mainClassName = 'com.snszyk.iiot.lim.quota.QuotaServiceApplication'
 }
 
 dependencyManagement {
@@ -48,7 +48,8 @@ repositories {
 dependencies {
     implementation project(':micrc-core')
 
-    implementation "io.ttyys.micrc:micrc-annotations:0.0.1-SNAPSHOT"
+    implementation "io.ttyys.micrc:micrc-annotations:0.0.2-SNAPSHOT"
+//    implementation "io.ttyys.micrc:micrc-core:0.0.2-SNAPSHOT"
 
     implementation "org.codehaus.groovy:groovy-all:${groovyVersion}"
     implementation "org.springframework.boot:spring-boot-starter-aop"

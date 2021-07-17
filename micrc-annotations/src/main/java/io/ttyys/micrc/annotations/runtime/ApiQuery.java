@@ -5,7 +5,7 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 @Documented
-public @interface ApiLogic {
+public @interface ApiQuery {
     /**
      * id
      */
@@ -20,15 +20,15 @@ public @interface ApiLogic {
      * 目标方法
      * 方法名
      */
-    String methodName() default "execute";
+    String methodName() default "query";
 
     /**
-     * 目标参数转换bean名称
+     * 转换bean名称
      */
     String mappingBean();
 
     /**
-     * 目标参数转换对应方法
+     * 返回数据转换对应方法
      */
-    String mappingMethod() default "dtoToCommand";
+    String mappingMethod() default "toData";
 }

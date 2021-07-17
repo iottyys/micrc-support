@@ -1,0 +1,40 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id 'org.springframework.boot' version '2.4.5'
+    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+}
+
+group 'io.ttyys.micrc'
+version '0.0.1-SNAPSHOT'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+ext {
+    set('lombok.version', '1.18.20')
+    set('mapstruct.version', '1.4.2.Final')
+}
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    implementation "io.ttyys.micrc:micrc-annotations:0.0.2-SNAPSHOT"
+    implementation "io.ttyys.micrc:micrc-core:0.0.2-SNAPSHOT"
+    implementation "com.google.guava:guava:19.0"
+
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+
+    // for lombok
+    implementation "org.projectlombok:lombok:${property('lombok.version')}"
+    annotationProcessor "org.projectlombok:lombok:${property('lombok.version')}"
+
+    implementation "org.mapstruct:mapstruct:${property('mapstruct.version')}"
+    annotationProcessor "org.mapstruct:mapstruct-processor:${property('mapstruct.version')}"
+
+}
