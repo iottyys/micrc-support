@@ -63,6 +63,8 @@ dependencies {
     implementation "org.apache.camel.springboot:camel-sql-starter"
     implementation "org.apache.camel.springboot:camel-spring-integration-starter"
     implementation "org.apache.camel:camel-bean-validator"
+//    implementation 'org.apache.camel:camel-avro'
+    implementation 'org.apache.camel:camel-jackson'
     testImplementation "org.apache.camel:camel-test-spring-junit5"
     implementation "org.springframework.boot:spring-boot-starter-integration"
     implementation "org.springframework.integration:spring-integration-jdbc"
@@ -99,6 +101,15 @@ test {
     useJUnitPlatform()
 }
 
+task sourcesJar(type: Jar) {
+    from sourceSets.main.allJava
+    classifier = 'sources'
+}
+task javadocJar(type: Jar) {
+    from javadoc
+    classifier = 'javadoc'
+}
+
 // 使用publishing中的publishToMavenLocal任务
 // https://docs.gradle.org/current/userguide/publishing_maven.html#publishing_maven
 publishing {
@@ -122,6 +133,8 @@ publishing {
         maven(MavenPublication) {
             //noinspection GroovyAssignabilityCheck
             from components.java
+            artifact sourcesJar
+//            artifact javadocJar
         }
     }
 }

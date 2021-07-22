@@ -4,4 +4,6 @@ class User {
     String userName
 
     Integer age
+
+    String id
 }

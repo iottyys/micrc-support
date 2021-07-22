@@ -33,14 +33,14 @@ public class LocalMessageRouterBuilder implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) throws Exception {
         // 通过路由模版以及携带信息构造消费路由
-        localConsumerRoutesInfo.getRoutesInfo().stream().forEach(routeInfo ->
+        localConsumerRoutesInfo.getRoutesInfo().forEach(routeInfo ->
                 TemplatedRouteBuilder
                         .builder(camelContext, "localConsumerRouteTemplate")
                         .parameters(routeInfo)
                         .add()
         );
         // 通过路由模版以及携带信息构造生产路由
-        localProducerRoutesInfo.getRoutesInfo().stream().forEach(routeInfo ->
+        localProducerRoutesInfo.getRoutesInfo().forEach(routeInfo ->
                 TemplatedRouteBuilder
                         .builder(camelContext, "localProducerRouteTemplate")
                         .parameters(routeInfo)

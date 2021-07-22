@@ -1,8 +1,10 @@
 package io.ttyys.micrc.integration.local.springboot;
 
+import com.google.common.collect.Maps;
 import io.ttyys.micrc.annotations.technology.LocalTransferConsumer;
 import io.ttyys.micrc.integration.local.camel.LocalConsumerRoutesInfo;
 import lombok.SneakyThrows;
+import org.apache.avro.data.Json;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
@@ -30,7 +32,7 @@ public class ClassPathLocalConsumerScanner extends ClassPathBeanDefinitionScanne
         super(registry, false);
     }
 
-    // @SneakyThrows(ClassNotFoundException.class)
+    @SneakyThrows(ClassNotFoundException.class)
     @Override
     protected Set<BeanDefinitionHolder> doScan(String... basePackages) {
         List<Map<String, Object>> routersInfo = new ArrayList<>();
@@ -48,25 +50,32 @@ public class ClassPathLocalConsumerScanner extends ClassPathBeanDefinitionScanne
             params.put("endpoint", endpoint);
             params.put("adapterClassName", adapterClassName);
             routersInfo.add(params);
-            // 这里要反射获取类下面的所有方法的方法名称和入参值
-//            GenericBeanDefinition genericBeanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
-//            genericBeanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
-//            Method[] methods = genericBeanDefinition.getBeanClass().getDeclaredMethods();
-//            Map<String, Object> methodsInfo = new HashMap<>();
-//            Arrays.stream(methods).forEach(method -> {
-//                String methodName = method.getName();
-//                Class<?>[] parameterTypes = method.getParameterTypes();
-//                assert parameterTypes.length <= 1;
-//                if (null != parameterTypes && 1 == parameterTypes.length) {
-//                    methodsInfo.put(methodName, parameterTypes[0].getTypeName());
-//                }
-//            });
-//            params.put("methodSignature", methodsInfo);
+            setMethodSignature(holder, params);
         }
         this.registerRoutersInfo(super.getRegistry(), routersInfo);
         // 清除该接口的拦截实现
         holders.clear();
         return holders;
+    }
+
+    private void setMethodSignature(BeanDefinitionHolder holder, Map<String, Object> params) throws ClassNotFoundException {
+        // 这里要反射获取类下面的所有方法的方法名称和入参值
+        GenericBeanDefinition genericBeanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
+        genericBeanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
+        Method[] methods = genericBeanDefinition.getBeanClass().getDeclaredMethods();
+        Map<String, Object> methodsInfo = new HashMap<>();
+        Arrays.stream(methods).forEach(method -> {
+            String methodName = method.getName();
+            Class<?>[] parameterTypes = method.getParameterTypes();
+            assert parameterTypes.length <= 1;
+            Map<String, Object> currentMethod = Maps.newHashMap();
+            if (1 == parameterTypes.length) {
+                currentMethod.put("parameterType", parameterTypes[0].getName());
+            }
+            currentMethod.put("returnType", method.getReturnType().getName());
+            methodsInfo.put(methodName, Json.toString(currentMethod));
+        });
+        params.put("methodSignature", Json.toString(methodsInfo));
     }
 
     @Override

@@ -33,7 +33,6 @@ public class ClassPathLocalProducerScanner extends ClassPathBeanDefinitionScanne
     @Override
     protected Set<BeanDefinitionHolder> doScan(String... basePackages) {
         List<Map<String, Object>> routersInfo = new ArrayList<>();
-        Map<String, Map<String, Object>> methodSignature = new HashMap<>();
         this.addIncludeFilter(new AnnotationTypeFilter(LocalTransferProducer.class));
         Set<BeanDefinitionHolder> holders = super.doScan(basePackages);
         for (BeanDefinitionHolder holder : holders) {
