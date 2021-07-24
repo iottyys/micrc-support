@@ -23,40 +23,20 @@ public class LocalProducerRouteTemplate extends RouteBuilder {
                 .templateParameter("adapterClassName")
                 .from("direct:{{beanClassName}}")
                 .routeId("producer-{{beanClassName}}")
-                .process(exchange -> {
-                    Message message = exchange.getIn();
-                    log.info(message.getHeaders().toString());
-                    log.info(message.getBody().toString());
-                })
-                .log("${headers}").log("${body}")
-                // FIXME 这里需要修改为avro转换
-                // https://stackoverflow.com/questions/40756027/apache-camel-json-marshalling-to-pojo-java-bean
-                // https://camel.apache.org/components/3.9.x/dataformats/json-johnzon-dataformat.html
+
                 .choice()
                 .when(header("methodParameterType").isNotNull())
                 .marshal().json()
-//                .toD("dataformat:avro:marshal?contextPath=${headers.methodParameterType}")
-//                .marshal().avro(simple("${headers.methodParameterType}", String.class).toString())
                 .end()
+
                 .setBody(simple("${body}"))
                 .to("direct:{{endpoint}}")
-                .process(exchange -> {
-                    Message message = exchange.getIn();
-                    log.info(message.getHeaders().toString());
-                    log.info(message.getBody().toString());
-                })
-//                .choice()
-//                .when(header("methodReturnType").isNotNull())
-                //.unmarshal().json(JsonLibrary.Jackson, simple(""))
-//                .to("dataformat:json:unmarshal?contextPath=${headers.methodReturnType}")
-                .toD("dataformat:json-jackson:unmarshal?contextPath=${headers.methodReturnType}")
-//                .unmarshal().avro(simple("${headers.methodReturnType}", String.class).toString())
-//                .end()
-                .process(exchange -> {
-                    Message message = exchange.getIn();
-                    log.info(message.getHeaders().toString());
-                    log.info(message.getBody().toString());
-                })
+
+                .choice()
+                .when(header("CamelJacksonUnmarshalType").isNotNull())
+                // avro转换必须实现接口GenericContainer中的getSchema方法，所以后期通过avro schema自动生成的类可以这么转换， 暂时只能用json进行转换
+                .to("dataformat:json-jackson:unmarshal?allow-unmarshall-type=true")
+                .end()
         ;
     }
 }

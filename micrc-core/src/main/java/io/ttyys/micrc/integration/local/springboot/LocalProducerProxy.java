@@ -43,10 +43,10 @@ public class LocalProducerProxy<T> implements InvocationHandler {
                 if (parameterTypes.length == 1) {
                     headers.put("methodParameterType", parameterTypes[0].getName());
                 }
-                headers.put("methodReturnType", method.getReturnType().getName());
+//                headers.put("methodReturnType", method.getReturnType().getName());
+                headers.put("CamelJacksonUnmarshalType", method.getReturnType().getName());
 
-                Object result =  producerTemplate.requestBodyAndHeaders("direct:" + interfaceType.getName(), args[0], headers);
-                return result;
+                return producerTemplate.requestBodyAndHeaders("direct:" + interfaceType.getName(), args[0], headers);
             }
             // 因为是本地消息,发送无返回
             return null;

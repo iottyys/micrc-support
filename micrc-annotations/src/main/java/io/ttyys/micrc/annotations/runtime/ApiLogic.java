@@ -7,11 +7,6 @@ import java.lang.annotation.*;
 @Documented
 public @interface ApiLogic {
     /**
-     * id
-     */
-    String id() default "";
-
-    /**
      * 目标服务bean名称
      */
     String serviceName();

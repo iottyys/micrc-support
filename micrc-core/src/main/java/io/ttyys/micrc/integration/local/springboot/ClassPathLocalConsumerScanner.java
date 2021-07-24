@@ -15,6 +15,7 @@ import org.springframework.context.annotation.ClassPathBeanDefinitionScanner;
 import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Method;
 import java.util.*;
@@ -36,21 +37,19 @@ public class ClassPathLocalConsumerScanner extends ClassPathBeanDefinitionScanne
     @Override
     protected Set<BeanDefinitionHolder> doScan(String... basePackages) {
         List<Map<String, Object>> routersInfo = new ArrayList<>();
-        Map<String, Map<String, Object>> methodSignature = new HashMap<>();
         this.addIncludeFilter(new AnnotationTypeFilter(LocalTransferConsumer.class));
         Set<BeanDefinitionHolder> holders = super.doScan(basePackages);
         for (BeanDefinitionHolder holder : holders) {
-            // 解析获取注解上的值,要获取注解上的endpoint 然后放到上面那个LocalConsumerRoutersInfo里 直接由Spring生成
-            AnnotatedBeanDefinition annotatedBeanDefinition = (AnnotatedBeanDefinition) holder.getBeanDefinition();
-            AnnotationAttributes attributes = AnnotationAttributes.fromMap(
-                    annotatedBeanDefinition.getMetadata().getAnnotationAttributes(LocalTransferConsumer.class.getName()));
-            Object endpoint = attributes.get("endpoint");
-            Object adapterClassName = attributes.get("adapterClassName");
+            GenericBeanDefinition beanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
+            beanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
+
+            Class<?> beanClass = beanDefinition.getBeanClass();
+            LocalTransferConsumer localTransferConsumer = beanClass.getAnnotation(LocalTransferConsumer.class);
             Map<String, Object> params = new HashMap<>();
-            params.put("endpoint", endpoint);
-            params.put("adapterClassName", adapterClassName);
+            params.put("endpoint", localTransferConsumer.endpoint());
+            params.put("adapterClassName", localTransferConsumer.adapterClassName());
             routersInfo.add(params);
-            setMethodSignature(holder, params);
+            setMethodSignature(beanDefinition, params);
         }
         this.registerRoutersInfo(super.getRegistry(), routersInfo);
         // 清除该接口的拦截实现
@@ -58,13 +57,10 @@ public class ClassPathLocalConsumerScanner extends ClassPathBeanDefinitionScanne
         return holders;
     }
 
-    private void setMethodSignature(BeanDefinitionHolder holder, Map<String, Object> params) throws ClassNotFoundException {
-        // 这里要反射获取类下面的所有方法的方法名称和入参值
-        GenericBeanDefinition genericBeanDefinition = (GenericBeanDefinition) holder.getBeanDefinition();
-        genericBeanDefinition.resolveBeanClass(Thread.currentThread().getContextClassLoader());
-        Method[] methods = genericBeanDefinition.getBeanClass().getDeclaredMethods();
+    private void setMethodSignature(GenericBeanDefinition beanDefinition, Map<String, Object> params) throws ClassNotFoundException {
         Map<String, Object> methodsInfo = new HashMap<>();
-        Arrays.stream(methods).forEach(method -> {
+        ReflectionUtils.doWithLocalMethods(beanDefinition.getBeanClass(), method -> {
+            // 这里要反射获取类下面的所有方法的方法名称和入参值
             String methodName = method.getName();
             Class<?>[] parameterTypes = method.getParameterTypes();
             assert parameterTypes.length <= 1;

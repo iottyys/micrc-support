@@ -9,6 +9,10 @@ import java.lang.annotation.*;
 @Target(ElementType.TYPE)
 @Documented
 public @interface LocalTransferConsumer {
+    /**
+     * 端点定义
+     * @return 定义端点uri
+     */
     String endpoint();
 
     /**

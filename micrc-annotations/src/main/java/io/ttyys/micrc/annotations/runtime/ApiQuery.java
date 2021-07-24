@@ -7,11 +7,6 @@ import java.lang.annotation.*;
 @Documented
 public @interface ApiQuery {
     /**
-     * id
-     */
-    String id() default "";
-
-    /**
      * 目标服务bean名称
      */
     String serviceName();
@@ -25,7 +20,7 @@ public @interface ApiQuery {
     /**
      * 转换bean名称
      */
-    String mappingBean();
+    String mappingBean() default "";
 
     /**
      * 返回数据转换对应方法

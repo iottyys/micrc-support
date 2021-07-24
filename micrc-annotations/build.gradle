@@ -27,6 +27,15 @@ ext {
     set('nexusPasswd', "105115Fc")
 }
 
+task sourcesJar(type: Jar) {
+    from sourceSets.main.allJava
+    classifier = 'sources'
+}
+task javadocJar(type: Jar) {
+    from javadoc
+    classifier = 'javadoc'
+}
+
 // 使用publishing中的publishToMavenLocal任务
 // https://docs.gradle.org/current/userguide/publishing_maven.html#publishing_maven
 publishing {
@@ -50,6 +59,7 @@ publishing {
         maven(MavenPublication) {
             //noinspection GroovyAssignabilityCheck
             from components.java
+            artifact sourcesJar
         }
     }
 }

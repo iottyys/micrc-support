@@ -34,36 +34,26 @@ public class LocalConsumerRouteTemplate extends RouteBuilder {
                     String parameterType = methodInfo.get("parameterType");
                     String returnType = methodInfo.get("returnType");
                     if (StringUtils.isNotBlank(parameterType)) {
-                        message.setHeader("currentParameterType", parameterType);
+                        message.setHeader("CamelJacksonUnmarshalType", parameterType);
                     }
                     if (StringUtils.isNotBlank(returnType)) { // TODO  无返回值的判断--有待验证
                         message.setHeader("currentReturnType", returnType);
                     }
-                    log.info(message.getHeaders().toString());
-                    log.info(message.getBody().toString());
                 })
-                .log("${headers}").log("${body}")
+
                 .choice()
-                .when(header("currentParameterType").isNotNull())
-                .unmarshal().json()
-//                .to("dataformat:json:unmarshal?contextPath=${headers.currentParameterType}")
-//                .to("dataformat:avro:unmarshal?contextPath=${headers.currentParameterType}")
-//                .unmarshal().avro(simple("${headers.currentParameterType}", String.class))
+                .when(header("CamelJacksonUnmarshalType").isNotNull())
+                // avro转换必须实现接口GenericContainer中的getSchema方法，所以后期通过avro schema自动生成的类可以这么转换， 暂时只能用json进行转换
+                .to("dataformat:json-jackson:unmarshal?allow-unmarshall-type=true")
                 .end()
-                // .bean("#{{adapterClassName}}", "-D${headers.methodName}(${body})")
+
                 .setBody(simple("${body}"))
                 .toD("bean:{{adapterClassName}}?method=${headers.methodName}")
+
                 .choice()
                 .when(header("currentReturnType").isNotNull())
                 .marshal().json()
-//                .toD("dataformat:avro:marshal?contextPath=${headers.currentReturnType}")
-//                .marshal().avro(header("currentReturnType"))
                 .end()
-                .process(exchange -> {
-                    Message message = exchange.getIn();
-                    log.info(message.getHeaders().toString());
-                    log.info(message.getBody().toString());
-                })
         ;
     }
 }

@@ -9,9 +9,12 @@ import java.lang.annotation.*;
 @Target(ElementType.TYPE)
 @Documented
 public @interface LocalTransferProducer {
-    String endpoint();
     /**
-     * @return 实现类名称--不包含包结构
+     * 调用端点
+     * @return 端点uri
      */
-    String adapterClassName();
+    String endpoint();
+
+    @Alias
+    String value();
 }
