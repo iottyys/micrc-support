@@ -18,9 +18,9 @@ ext {
     set('mapstruct.version', '1.4.2.Final')
 
     // 稳定版仓库地址
-    set('releasesRepositoryUrl', "http://192.168.31.138:8081/repository/maven-releases/")
+    set('releasesRepositoryUrl', "http://fengchao98.f3322.net:8081/repository/maven-releases/")
     // 测试版仓库地址
-    set('snapshotsRepositoryUrl', "http://192.168.31.138:8081/repository/maven-snapshots/")
+    set('snapshotsRepositoryUrl', "http://fengchao98.f3322.net:8081/repository/maven-snapshots/")
     // nexus用户名
     set('nexusUser', "admin")
     // nexus密码
@@ -32,7 +32,7 @@ repositories {
     mavenCentral()
     maven {
         name = "publicRepo"
-        url = uri("http://192.168.31.138:8081/repository/maven-public/")
+        url = uri("http://fengchao98.f3322.net:8081/repository/maven-public/")
     }
 }
 
@@ -92,6 +92,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-aop'
+
 
     // database migration
 //    implementation "org.liquibase:liquibase-core"

@@ -18,15 +18,17 @@ jar.enabled = true
 
 ext {
     // 稳定版仓库地址
-    set('releasesRepositoryUrl', "http://192.168.31.138:8081/repository/maven-releases/")
+    set('releasesRepositoryUrl', "http://fengchao98.f3322.net:8081/repository/maven-releases/")
     // 测试版仓库地址
-    set('snapshotsRepositoryUrl', "http://192.168.31.138:8081/repository/maven-snapshots/")
+    set('snapshotsRepositoryUrl', "http://fengchao98.f3322.net:8081/repository/maven-snapshots/")
     // nexus用户名
     set('nexusUser', "admin")
     // nexus密码
     set('nexusPasswd', "105115Fc")
 }
-
+dependencies {
+    implementation 'org.springframework:spring-core:5.2.10.RELEASE'
+}
 task sourcesJar(type: Jar) {
     from sourceSets.main.allJava
     classifier = 'sources'
