@@ -44,7 +44,7 @@ public class ClassPathLocalProducerScanner extends ClassPathBeanDefinitionScanne
             Class<?> beanClass = genericBeanDefinition.getBeanClass();
             LocalTransferProducer localTransferProducer = beanClass.getAnnotation(LocalTransferProducer.class);
             Map<String, Object> params = new HashMap<>();
-            params.put("endpoint", localTransferProducer.endpoint());
+            params.put("endpoint", localTransferProducer.endpoint() + localTransferProducer.value());
             params.put("beanClassName", beanClass.getName());
             routersInfo.add(params);
             // 创建动态代理

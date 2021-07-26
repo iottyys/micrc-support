@@ -20,7 +20,6 @@ public class LocalProducerRouteTemplate extends RouteBuilder {
         routeTemplate("localProducerRouteTemplate")
                 .templateParameter("endpoint")
                 .templateParameter("beanClassName")
-                .templateParameter("adapterClassName")
                 .from("direct:{{beanClassName}}")
                 .routeId("producer-{{beanClassName}}")
 
