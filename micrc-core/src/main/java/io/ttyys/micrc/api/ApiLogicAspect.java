@@ -82,6 +82,6 @@ public class ApiLogicAspect {
         if (args.length > 1) {
             throw new IllegalArgumentException("support at most one argument");
         }
-        return args.length > 0 ? args[0] != null ? args[0] : new Object() : new Object();
+        return args.length > 0 ? args[0] : null;
     }
 }
