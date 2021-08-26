@@ -1,0 +1,10 @@
+@namespace("person")
+protocol PersonQueryController {
+  @namespace("person")
+  record PersonModel {
+    string id;
+    string name;
+  }
+
+  @java-class("java.util.ArrayList") array<PersonModel> list(PersonModel param);
+}

@@ -13,10 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.ttyys.micrc.sad.gradle.plugin.task;
+package io.ttyys.micrc.sad.gradle.plugin.schema.task;
 
-import io.ttyys.micrc.sad.gradle.plugin.common.Constants;
-import io.ttyys.micrc.sad.gradle.plugin.common.RequestEnum;
 import io.ttyys.micrc.sad.gradle.plugin.common.file.FileExtensionSpec;
 import io.ttyys.micrc.sad.gradle.plugin.common.file.FileUtils;
 import org.apache.avro.Protocol;
@@ -28,16 +26,21 @@ import org.gradle.api.tasks.TaskAction;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 
 import static io.ttyys.micrc.sad.gradle.plugin.common.Constants.PROTOCOL_EXTENSION;
 
 /**
- * Task to convert Avro IDL files into Avro protocol files using {@link Idl}.
+ * 设计结构说明 Structure
+ * 设计源 src/main/avro
+ *  ├- project-config.json -- 项目相关的配置（项目前缀包名/部署方式/各部分的技术定义/等）
+ *  └- 模块目录
+ *    ├- module-config.json -- 模块相关配置（模块前缀包名/本地消息调用关系/等）
+ *    ├- api(controller)
+ *    ├- application(service应用/查询服务)
+ *    ├- domain
+ *    ├- local
  */
-public class StructureDesignTask extends OutputDirTask {
-    private static final String Consumer_Annotation_Str = "io.ttyys.micrc.annotations.Structure(interfacePkg=\"infrastructure.%s\", implPkg=\"infrastructure.%s\", objPkg=\"infrastructure.dto\")";
-    private static final String Producer_Annotation_Str = "io.ttyys.micrc.annotations.Structure(interfacePkg=\"domain.service.%s\", implPkg=\"infrastructure.%s\", objPkg=\"domain.service.vo\")";
+public class DealProtocolStructureTask extends OutputDirTask {
     @TaskAction
     protected void process() {
         getLogger().info("Found {} files", getSource().getFiles().size());
@@ -65,26 +68,15 @@ public class StructureDesignTask extends OutputDirTask {
     private void processProtocolFile(File sourceFile) {
         try {
             Protocol protocol = Protocol.parse(sourceFile);
-//            String requestType = sourceFile.getParentFile().getParentFile().getName();  // local rpc msg
-            String activeState = sourceFile.getParentFile().getName(); // 主动 / 被动
-            String annotation;
-            if (Arrays.asList(RequestEnum.LOCAL.getDefDirName(), RequestEnum.INFORMATION.getDefDirName()).contains(activeState)) {
-                annotation = String.format(Consumer_Annotation_Str, activeState, activeState);
-            } else {
-                annotation = String.format(Producer_Annotation_Str, activeState, activeState);
-            }
             sourceFile.deleteOnExit();
+            // 构造结构性注解信息
             // 添加结构性注解
-            protocol.addProp("javaAnnotation", annotation);
+//            protocol.addProp("javaAnnotation", annotation);
             String protoJson = protocol.toString(true);
             FileUtils.writeJsonFile(sourceFile, protoJson);
-            getLogger().debug("协议添加结构注解完成 {}", sourceFile.getPath());
+            getLogger().debug("协议调整结构完成 {}", sourceFile.getPath());
         } catch (IOException ex) {
             throw new GradleException(String.format("Failed to process protocol definition file %s", sourceFile), ex);
         }
-    }
-
-    public String getGroup() {
-        return Constants.GROUP_SOURCE_GENERATION;
     }
 }

@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.ttyys.micrc.sad.gradle.plugin.task;
+package io.ttyys.micrc.sad.gradle.plugin.schema.task;
 
+import io.ttyys.micrc.sad.gradle.plugin.schema.Constants;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileTree;
@@ -53,5 +54,10 @@ public class OutputDirTask extends SourceTask {
 
     public FileCollection filterSources(Spec<? super File> spec) {
         return getSource().filter(spec);
+    }
+
+    @Override
+    public String getGroup() {
+        return Constants.GROUP;
     }
 }

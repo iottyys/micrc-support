@@ -15,36 +15,11 @@
  */
 package io.ttyys.micrc.sad.gradle.plugin.extension;
 
-import io.ttyys.micrc.sad.gradle.plugin.common.Constants;
-import org.gradle.api.model.ObjectFactory;
-import org.gradle.api.provider.Property;
-
 import javax.inject.Inject;
 
 public class SchemaDesignExtension {
-    private final Property<String> sourcePath;
-    private final Property<String> destPath;
 
-    @SuppressWarnings("UnstableApiUsage")
     @Inject
-    public SchemaDesignExtension(ObjectFactory objects) {
-        this.sourcePath = objects.property(String.class).convention(Constants.PROTOCOL_SOURCE_PATH_KEY);
-        this.destPath = objects.property(String.class).convention(Constants.PROTOCOL_DEST_PATH_KEY);
-    }
-
-    public Property<String> getSourcePath() {
-        return sourcePath;
-    }
-
-    public Property<String> getDestPath() {
-        return destPath;
-    }
-
-    public void setSourcePath(String schemaDesignPath) {
-        this.sourcePath.set(schemaDesignPath);
-    }
-
-    public void setDestPath(String destPath) {
-        this.destPath.set(destPath);
+    public SchemaDesignExtension() {
     }
 }

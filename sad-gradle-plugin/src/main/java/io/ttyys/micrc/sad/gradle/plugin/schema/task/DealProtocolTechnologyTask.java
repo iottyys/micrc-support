@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.ttyys.micrc.sad.gradle.plugin.task;
+package io.ttyys.micrc.sad.gradle.plugin.schema.task;
 
 import com.alibaba.fastjson.JSONObject;
 import io.ttyys.micrc.sad.gradle.plugin.common.Constants;
@@ -40,7 +40,7 @@ import static io.ttyys.micrc.sad.gradle.plugin.common.Constants.PROTOCOL_EXTENSI
 /**
  * 技术设计
  */
-public class TechnologyDesignTask extends OutputDirTask {
+public class DealProtocolTechnologyTask extends OutputDirTask {
 
     private Map<String, JSONObject> moduleMap = new HashMap<>(0);
 
@@ -48,7 +48,7 @@ public class TechnologyDesignTask extends OutputDirTask {
     private final Property<String> destPath;
 
     @Inject
-    public TechnologyDesignTask(ObjectFactory objects) {
+    public DealProtocolTechnologyTask(ObjectFactory objects) {
         super();
         this.sourcePath = objects.property(String.class).convention(Constants.PROTOCOL_SOURCE_PATH_KEY);
         this.destPath = objects.property(String.class).convention(Constants.PROTOCOL_DEST_PATH_KEY);
@@ -91,7 +91,6 @@ public class TechnologyDesignTask extends OutputDirTask {
 
     private void processProtocolFile(File sourceFile) {
         try {
-
             String requestType = sourceFile.getParentFile().getParentFile().getName();  // local rpc msg
             String activeState = sourceFile.getParentFile().getName(); // 主动 / 被动
             TechnologyType technologyType = TechnologyType.valueOf(requestType);

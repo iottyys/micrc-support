@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.ttyys.micrc.sad.gradle.plugin.task;
+package io.ttyys.micrc.sad.gradle.plugin.schema.task;
 
+import cn.hutool.core.io.FileUtil;
 import com.alibaba.fastjson.JSONObject;
 import io.ttyys.micrc.sad.gradle.plugin.common.AvroUtils;
 import io.ttyys.micrc.sad.gradle.plugin.common.Constants;
@@ -25,9 +26,10 @@ import io.ttyys.micrc.sad.gradle.plugin.common.gradle.GradleCompatibility;
 import org.apache.avro.Protocol;
 import org.apache.avro.compiler.idl.Idl;
 import org.apache.avro.compiler.idl.ParseException;
+import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.GradleException;
+import org.gradle.api.Project;
 import org.gradle.api.file.FileCollection;
-import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.specs.NotSpec;
 import org.gradle.api.tasks.CacheableTask;
@@ -41,38 +43,28 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
+import static io.ttyys.micrc.sad.gradle.plugin.api.Constants.POINT;
+import static io.ttyys.micrc.sad.gradle.plugin.api.Constants.PROTOCOL_EXTENSION;
 import static io.ttyys.micrc.sad.gradle.plugin.common.Constants.IDL_EXTENSION;
 
 /**
  * Task to convert Avro IDL files into Avro protocol files using {@link Idl}.
  */
 @CacheableTask
-public class GenerateAvroProtocolTask extends OutputDirTask {
+public class CompileIdlTask extends OutputDirTask {
 
     private FileCollection classpath;
-    private final Property<String> destPath;
+
+    private Project project;
 
     @Inject
-    public GenerateAvroProtocolTask(ObjectFactory objects) {
-        super();
-        this.classpath = GradleCompatibility.createConfigurableFileCollection(getProject());
-        this.destPath = objects.property(String.class).convention(Constants.PROTOCOL_DEST_PATH_KEY);
-    }
-
-    public void setClasspath(FileCollection classpath) {
-        this.classpath = classpath;
-    }
-
-    public void classpath(Object... paths) {
-        this.classpath.plus(getProject().files(paths));
-    }
-
-    @Classpath
-    public FileCollection getClasspath() {
-        return this.classpath;
+    public CompileIdlTask() {
+        project = getProject();
+        classpath = GradleCompatibility.createConfigurableFileCollection(project);
     }
 
     @TaskAction
@@ -92,28 +84,30 @@ public class GenerateAvroProtocolTask extends OutputDirTask {
 
     private void processFiles() {
         int processedFileCount = 0;
+        SourceSet sourceSet = ProjectUtils.getMainSourceSet(getProject());
+        File srcDir = ProjectUtils.getAvroSourceDir(getProject(), sourceSet);
         ClassLoader loader = assembleClassLoader();
         for (File sourceFile : filterSources(new FileExtensionSpec(IDL_EXTENSION))) {
-            processIDLFile(sourceFile, loader);
+            processIDLFile(sourceFile, loader, srcDir);
             processedFileCount++;
         }
         setDidWork(processedFileCount > 0);
     }
 
-    private void processIDLFile(File idlFile, ClassLoader loader) {
-        SourceSet sourceSet = ProjectUtils.getMainSourceSet(getProject());
-        String srcDirPath = ProjectUtils.getAvroSourceDirPath(sourceSet);
-        File srcDir = ProjectUtils.getAvroSourceDir(getProject(), sourceSet);
+    private void processIDLFile(File idlFile, ClassLoader loader, File srcDir) {
+        // 相对路径
+        String relativePath = idlFile.getParentFile().getAbsolutePath().replaceAll(srcDir.getAbsolutePath(), "");
+        String path = StringUtils.join(
+                Arrays.asList(project.getBuildDir().getAbsolutePath(), PROTOCOL_EXTENSION, relativePath),
+                File.separator);
+        String protoFileName = FileUtil.getPrefix(idlFile) + POINT + PROTOCOL_EXTENSION;
         getLogger().info("Processing {}", idlFile);
         try (Idl idl = new Idl(idlFile, loader)) {
             Protocol protocol = idl.CompilationUnit();
-            String path = AvroUtils.assemblePath(idlFile, srcDirPath, true, null, destPath);
-            File protoFile = new File(srcDir, path);
+            File protoFile = new File(path, protoFileName);
             String protoJson = protocol.toString(true);
             FileUtils.writeJsonFile(protoFile, protoJson);
             getLogger().debug("写入协议定义 {}", protoFile.getPath());
-
-            dealRelation(idlFile, protoJson, srcDirPath, srcDir);
         } catch (IOException | ParseException ex) {
             throw new GradleException(String.format("Failed to compile IDL file %s", idlFile), ex);
         }
@@ -123,6 +117,7 @@ public class GenerateAvroProtocolTask extends OutputDirTask {
         String jsonStr = FileUtils.readJsonString(idlFile.getParent() + File.separator + Constants.RELATION_JSON_FILE_NAME);
         JSONObject jsonObject = JSONObject.parseObject(jsonStr);
         List<String> relationArray = jsonObject.getJSONArray(idlFile.getName().substring(0, idlFile.getName().length() - 1 - IDL_EXTENSION.length())).toJavaList(String.class);
+        Property<String> destPath = null;
         for (String moduleDir : relationArray) {
             String path = AvroUtils.assemblePath(idlFile, srcDirPath, false, moduleDir, destPath);
             File protoFile = new File(srcDir, path);
@@ -147,15 +142,16 @@ public class GenerateAvroProtocolTask extends OutputDirTask {
                 : new URLClassLoader(urls.toArray(new URL[0]), ClassLoader.getSystemClassLoader());
     }
 
-    public String getGroup() {
-        return Constants.GROUP_SOURCE_GENERATION;
+    public void setClasspath(FileCollection classpath) {
+        this.classpath = classpath;
     }
 
-    public void setDestPath(String destPath) {
-        this.destPath.set(destPath);
+    public void classpath(Object... paths) {
+        this.classpath.plus(getProject().files(paths));
     }
 
-    public Property<String> getDestPath() {
-        return destPath;
+    @Classpath
+    public FileCollection getClasspath() {
+        return this.classpath;
     }
 }

@@ -6,12 +6,23 @@ import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
+import org.gradle.api.tasks.SourceTask;
+import org.gradle.api.tasks.TaskProvider;
 
 import java.io.File;
 
 public class ProjectUtils {
     public static SourceSetContainer getSourceSets(Project project) {
         return project.getConvention().getPlugin(JavaPluginConvention.class).getSourceSets();
+    }
+
+    public static void configureTaskDependencies(Project project, SourceSet sourceSet, TaskProvider<?> taskProvider) {
+        project.getPluginManager().withPlugin("org.jetbrains.kotlin.jvm", appliedPlugin ->
+                project.getTasks()
+                        .withType(SourceTask.class)
+                        .matching(task -> sourceSet.getCompileTaskName("kotlin").equals(task.getName()))
+                        .configureEach(task -> task.source(taskProvider.get().getOutputs()))
+        );
     }
 
     public static SourceSet getMainSourceSet(Project project) {
