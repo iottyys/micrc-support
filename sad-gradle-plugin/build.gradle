@@ -7,6 +7,8 @@ plugins {
 
 group 'io.ttyys.micrc'
 version '0.0.1-SNAPSHOT'
+description 'sad-gradle-plugin'
+
 sourceCompatibility = '1.8'
 targetCompatibility = '1.8'
 
@@ -15,16 +17,28 @@ ext {
     set('avroVersion', '1.10.2')
     set('slf4jVersion', '1.7.30')
     set('fastjsonVersion', '1.2.76')
+
+    // 稳定版仓库地址
+    set('releasesRepositoryUrl', "http://fengchao98.f3322.net:8081/repository/maven-releases/")
+    // 测试版仓库地址
+    set('snapshotsRepositoryUrl', "http://fengchao98.f3322.net:8081/repository/maven-snapshots/")
+    // nexus用户名
+    set('nexusUser', "admin")
+    // nexus密码
+    set('nexusPasswd', "105115Fc")
 }
 
 repositories {
     mavenLocal()
+    maven { url 'http://fengchao98.f3322.net:8081/repository/maven-public/' }
     mavenCentral()
 }
 
 jar.enabled = true
 
 dependencies {
+    implementation 'cn.hutool:hutool-all:5.7.9'
+
     implementation "com.alibaba:fastjson:${fastjsonVersion}"
     implementation "org.apache.avro:avro-compiler:${avroVersion}"
 
@@ -36,7 +50,7 @@ gradlePlugin {
     plugins {
         "schema-design" {
             id = 'io.ttyys.gradle.sad.sad-gradle-plugin'
-            implementationClass = 'io.ttyys.micrc.sad.gradle.plugin.SchemaDesignPlugin'
+            implementationClass = 'io.ttyys.micrc.sad.gradle.plugin.schema.SchemaDesignPlugin'
         }
         "service-integration" {
             id = 'io.ttyys.gradle.sad.integration-gradle-plugin'
@@ -44,14 +58,40 @@ gradlePlugin {
         }
     }
 }
+
+task sourcesJar(type: Jar) {
+    from sourceSets.main.allJava
+    classifier = 'sources'
+}
+task javadocJar(type: Jar) {
+    from javadoc
+    classifier = 'javadoc'
+}
 // 使用publishing中的publishToMavenLocal任务
 // https://docs.gradle.org/current/userguide/publishing_maven.html#publishing_maven
 publishing {
+    repositories {
+        maven {
+            if (project.version.toString().endsWith("-SNAPSHOT")) {
+                name = "snapshotsRepo"
+                url = uri("${property('snapshotsRepositoryUrl')}")
+            } else {
+                name = "releasesRepo"
+                url = uri("${property('releasesRepositoryUrl')}")
+            }
+            credentials {
+                username = "${property('nexusUser')}"
+                password = "${property('nexusPasswd')}"
+            }
+        }
+    }
     publications {
         //noinspection GroovyAssignabilityCheck
         maven(MavenPublication) {
             //noinspection GroovyAssignabilityCheck
             from components.java
+            artifact sourcesJar
+//            artifact javadocJar
         }
     }
 }
