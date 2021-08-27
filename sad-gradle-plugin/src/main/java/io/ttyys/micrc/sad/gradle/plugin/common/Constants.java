@@ -32,7 +32,7 @@ public class Constants {
     public static final String PROTOCOL_EXTENSION = "avpr";
     public static final String IDL_EXTENSION = "avdl";
 
-    public static final String GROUP_SOURCE_GENERATION = "Protocol Generation";
+    public static final String GROUP_SOURCE_GENERATION = "ProtocolGeneration";
 
     public static final String SCHEMA_DESIGN_EXTENSION_NAME = "codegen-config";
 

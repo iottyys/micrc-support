@@ -1,4 +1,0 @@
-{
-  "Auth": ["order", "product", "uc"],
-  "ValidToken": ["order", "product", "uc"]
-}

@@ -4,9 +4,13 @@ package io.ttyys.micrc.sad.gradle.plugin.schema;
  * 常量接口
  */
 public interface Constants {
-    char POINT = '.';
-    String IDL_EXTENSION = "avdl";
-    String PROTOCOL_EXTENSION = "avpr";
-    String JAVA_ANNOTATION_KEY = "javaAnnotation";
-    String GROUP = "idl2protocol design";
+    char point = '.';
+    String idlExtension = "avdl";
+    String protocolExtension = "avpr";
+    String javaAnnotationKey = "javaAnnotation";
+    String group = "idl2protocol design";
+
+    String projectJsonFileName = "project-config.json";
+    String moduleJsonFileName = "module-config.json";
+
 }

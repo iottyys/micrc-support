@@ -57,7 +57,7 @@ public class SchemaDesignPlugin implements Plugin<Project> {
             task.setDescription(
                     String.format("Design structure %s Avro protocol definition files from self.", sourceSet.getName()));
             task.source(protoTaskProvider);
-            task.source(ProjectUtils.getAvroSourceDir(project, sourceSet));
+            task.source(protoTaskProvider.get().getProtocolDirectory());
             task.include("**/*." + Constants.PROTOCOL_EXTENSION);
             task.getOutputDir().convention(ProjectUtils.getGeneratedOutputDir(project, sourceSet, Constants.PROTOCOL_EXTENSION));
         });

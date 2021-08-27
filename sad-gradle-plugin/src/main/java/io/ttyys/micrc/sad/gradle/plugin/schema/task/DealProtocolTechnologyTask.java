@@ -119,10 +119,6 @@ public class DealProtocolTechnologyTask extends OutputDirTask {
         return moduleMap.get(path);
     }
 
-    public String getGroup() {
-        return Constants.GROUP_SOURCE_GENERATION;
-    }
-
     public Property<String> getSourcePath() {
         return sourcePath;
     }

@@ -58,6 +58,6 @@ public class OutputDirTask extends SourceTask {
 
     @Override
     public String getGroup() {
-        return Constants.GROUP;
+        return Constants.group;
     }
 }

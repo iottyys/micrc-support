@@ -71,7 +71,7 @@ public class DealProtocolStructureTask extends OutputDirTask {
             sourceFile.deleteOnExit();
             // 构造结构性注解信息
             // 添加结构性注解
-//            protocol.addProp("javaAnnotation", annotation);
+            protocol.addProp("javaAnnotation", "annotation");
             String protoJson = protocol.toString(true);
             FileUtils.writeJsonFile(sourceFile, protoJson);
             getLogger().debug("协议调整结构完成 {}", sourceFile.getPath());

@@ -29,11 +29,8 @@ ext {
 
 repositories {
     mavenLocal()
+    maven { url 'http://fengchao98.f3322.net:8081/repository/maven-public/' }
     mavenCentral()
-    maven {
-        name = "publicRepo"
-        url = uri("http://fengchao98.f3322.net:8081/repository/maven-public/")
-    }
 }
 
 bootJar.enabled = false

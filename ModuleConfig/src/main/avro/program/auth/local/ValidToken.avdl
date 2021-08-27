@@ -1,5 +1,0 @@
-@namespace("com.szyk.tnmy")
-protocol ValidToken {
-  @javaAnnotation("io.ttyys.micrc.annotations.logic.LogicDelegate(application=\"aa01\", useCase=\"ab001\", paramCovertXml=\"p.xml\", resultCovertXml=\"r.xml\")")
-  boolean exec(string token);
-}
