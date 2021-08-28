@@ -150,12 +150,11 @@ public class FileUtils {
         return path.toString();
     }
 
-    public static String readJsonString(String fileName) {
+    public static String readJsonString(File file) {
         String jsonStr = "";
         try {
-            File jsonFile = new File(fileName);
-            FileReader fileReader = new FileReader(jsonFile);
-            Reader reader = new InputStreamReader(new FileInputStream(jsonFile), StandardCharsets.UTF_8);
+            FileReader fileReader = new FileReader(file);
+            Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
             int ch = 0;
             StringBuilder sb = new StringBuilder();
             while ((ch = reader.read()) != -1) {
@@ -168,5 +167,10 @@ public class FileUtils {
         } catch (IOException e) {
             return null;
         }
+    }
+
+    public static String readJsonString(String fileName) {
+        File jsonFile = new File(fileName);
+        return readJsonString(jsonFile);
     }
 }

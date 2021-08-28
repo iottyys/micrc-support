@@ -89,8 +89,8 @@ public class CompileIdlTask extends OutputDirTask {
 
     private void processFiles() {
         int processedFileCount = 0;
-        SourceSet sourceSet = ProjectUtils.getMainSourceSet(getProject());
-        File srcDir = ProjectUtils.getAvroSourceDir(getProject(), sourceSet);
+        SourceSet sourceSet = ProjectUtils.getMainSourceSet(project);
+        File srcDir = ProjectUtils.getAvroSourceDir(project, sourceSet);
         ClassLoader loader = assembleClassLoader();
         for (File sourceFile : filterSources(new FileExtensionSpec(Constants.idlExtension))) {
             processIDLFile(sourceFile, loader, srcDir);
@@ -150,7 +150,7 @@ public class CompileIdlTask extends OutputDirTask {
     }
 
     public void classpath(Object... paths) {
-        this.classpath.plus(getProject().files(paths));
+        this.classpath.plus(project.files(paths));
     }
 
     public File getProtocolDirectory() {
