@@ -98,7 +98,7 @@ public class DealProtocolStructureTask extends OutputDirTask {
 
             String protoJson = protocol.toString(true);
             JSONObject jsonObject = JSONObject.parseObject(protoJson);
-            // 调整结构
+            // 调整协议类的包结构
             jsonObject.put(Constants.namespaceKey, namespace);
 
             setTypeNamespace(baseNamespace, protocol, jsonObject);
@@ -111,6 +111,13 @@ public class DealProtocolStructureTask extends OutputDirTask {
         }
     }
 
+    /**
+     * 如果协议中定义了参数的类型，对类型的包结构进行调整
+     *
+     * @param baseNamespace 基础包
+     * @param protocol      协议
+     * @param jsonObject    json
+     */
     private void setTypeNamespace(String baseNamespace, Protocol protocol, JSONObject jsonObject) {
         String dtoNamespace;
 
@@ -121,12 +128,12 @@ public class DealProtocolStructureTask extends OutputDirTask {
                 // 查询api Controller
                 dtoNamespace = baseNamespace + Constants.point
                         + String.format(
-                        Constants.map.get(schema.getNamespace()),
+                        Constants.map.get("query" + (schema.getName().toLowerCase().endsWith("dto") ? "dto" : "vo")),
                         protocol.getName().replace(Constants.querySuffix, "").toLowerCase()
                 );
             } else {
                 // 应用api Controller
-                dtoNamespace = baseNamespace + Constants.map.get(schema.getNamespace());
+                dtoNamespace = baseNamespace + Constants.map.get((schema.getName().toLowerCase().endsWith("dto") ? "dto" : "vo"));
             }
             map.put(schema.getName(), dtoNamespace);
         }
@@ -142,8 +149,9 @@ public class DealProtocolStructureTask extends OutputDirTask {
         JSONObject projectConfigJson = loadJson(srcDir, Constants.projectJsonFileName);
         if (projectConfigJson.containsKey(Constants.packagePrefixKey)) {
             // 相对路径
-            String relativePath = sourceFile.getParentFile().getAbsolutePath().replaceAll(protocolDirectory.getAbsolutePath(), "");
-            String[] pathArr = relativePath.split(File.separator); // 模块，架构功能
+            String relativePath = sourceFile.getParentFile().getAbsolutePath().replaceAll(
+                    protocolDirectory.getAbsolutePath().replaceAll("\\\\", "\\\\\\\\"), "");
+            String[] pathArr = relativePath.substring(1).split("\\".equals(File.separator) ? "\\\\" : File.separator); // 模块，架构功能
             File moduleDir = new File(srcDir.getAbsolutePath(), pathArr[0]);
             JSONObject moduleConfigJson = loadJson(moduleDir, Constants.moduleJsonFileName);
             // 构造结构信息

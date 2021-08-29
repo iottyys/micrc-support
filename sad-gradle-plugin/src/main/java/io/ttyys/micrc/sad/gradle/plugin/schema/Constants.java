@@ -25,7 +25,9 @@ public interface Constants {
     String packagePrefixKey = "packagePrefix";
     Map<String, String> map = ImmutableMap.<String, String>builder()
             .put("api", "infrastructure.api.rpc")
-            .put("queryDto", "presentation.%s.model")
             .put("dto", "application.dto")
+            .put("vo", "application.vo")
+            .put("querydto", "presentation.%s.model")
+            .put("queryvo", "presentation.%s.model")
             .build();
 }

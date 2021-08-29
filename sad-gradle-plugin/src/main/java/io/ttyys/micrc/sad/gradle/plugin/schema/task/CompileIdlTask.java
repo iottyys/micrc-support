@@ -101,8 +101,9 @@ public class CompileIdlTask extends OutputDirTask {
 
     private void processIDLFile(File idlFile, ClassLoader loader, File srcDir) {
         // 相对路径
-        String relativePath = idlFile.getParentFile().getAbsolutePath().replaceAll(srcDir.getAbsolutePath(), "");
-        String path = protocolDirectory.getAbsolutePath() + File.separator + relativePath;
+        String relativePath = idlFile.getParentFile().getAbsolutePath().replaceAll(
+                srcDir.getAbsolutePath().replaceAll("\\\\", "\\\\\\\\"), "");
+        String path = protocolDirectory.getAbsolutePath() + relativePath;
         String protoFileName = FileUtil.getPrefix(idlFile) + Constants.point + Constants.protocolExtension;
         getLogger().info("Processing {}", idlFile);
         try (Idl idl = new Idl(idlFile, loader)) {

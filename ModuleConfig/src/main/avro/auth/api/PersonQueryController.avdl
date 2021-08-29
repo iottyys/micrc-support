@@ -1,10 +1,13 @@
-@namespace("person")
+@namespace("api")
 protocol PersonQueryController {
-  @namespace("person")
-  record PersonModel {
+  record PersonModelDto {
+    string id;
+    string name;
+  }
+  record PersonModelVo {
     string id;
     string name;
   }
 
-  @java-class("java.util.ArrayList") array<PersonModel> list(PersonModel param);
+  @java-class("java.util.ArrayList") array<PersonModelVo> list(PersonModelDto param);
 }
