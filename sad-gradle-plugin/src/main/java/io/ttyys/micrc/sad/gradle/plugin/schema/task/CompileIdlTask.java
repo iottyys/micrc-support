@@ -106,7 +106,8 @@ public class CompileIdlTask extends OutputDirTask {
         String path = protocolDirectory.getAbsolutePath() + relativePath;
         String protoFileName = FileUtil.getPrefix(idlFile) + Constants.point + Constants.protocolExtension;
         getLogger().info("Processing {}", idlFile);
-        try (Idl idl = new Idl(idlFile, loader)) {
+        try {
+            Idl idl = new Idl(idlFile);
             Protocol protocol = idl.CompilationUnit();
             File protoFile = new File(path, protoFileName);
             String protoJson = protocol.toString(true);

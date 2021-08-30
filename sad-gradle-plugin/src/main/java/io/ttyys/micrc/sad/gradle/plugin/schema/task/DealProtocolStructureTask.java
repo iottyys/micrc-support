@@ -103,7 +103,6 @@ public class DealProtocolStructureTask extends OutputDirTask {
 
             setTypeNamespace(baseNamespace, protocol, jsonObject);
 
-            protocol.getTypes();
             FileUtils.writeJsonFile(sourceFile, jsonObject.toJSONString());
             getLogger().debug("协议调整结构完成 {}", sourceFile.getPath());
         } catch (IOException ex) {

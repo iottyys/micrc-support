@@ -1,0 +1,5 @@
+@namespace("aa")
+record Page {
+  string id;
+  string name;
+}
