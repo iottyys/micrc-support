@@ -12,7 +12,7 @@ protocol PersonQueryController {
 
     import idl "Page.avdl";
 
-    common.Page page(common.Page a);
+    common.Page page(common.Page param);
 
     @java-class("java.util.ArrayList") array<PersonModelVo> list(PersonModelDto param);
 }

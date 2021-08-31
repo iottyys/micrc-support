@@ -93,15 +93,14 @@ public class CompileIdlTask extends OutputDirTask {
         int processedFileCount = 0;
         SourceSet sourceSet = ProjectUtils.getMainSourceSet(project);
         File srcDir = ProjectUtils.getAvroSourceDir(project, sourceSet);
-        ClassLoader loader = assembleClassLoader();
         for (File sourceFile : filterSources(new FileExtensionSpec(Constants.idlExtension))) {
-            processIDLFile(sourceFile, loader, srcDir);
+            processIDLFile(sourceFile, srcDir);
             processedFileCount++;
         }
         setDidWork(processedFileCount > 0);
     }
 
-    private void processIDLFile(File idlFile, ClassLoader loader, File srcDir) {
+    private void processIDLFile(File idlFile, File srcDir) {
         // 相对路径
         String relativePath = idlFile.getParentFile().getAbsolutePath().replaceAll(
                 srcDir.getAbsolutePath().replaceAll("\\\\", "\\\\\\\\"), "");
@@ -145,22 +144,6 @@ public class CompileIdlTask extends OutputDirTask {
             FileUtils.writeJsonFile(protoFile, protoJson);
             getLogger().debug("写入协议 调用/监听 {}", protoFile.getPath());
         }
-    }
-
-    private ClassLoader assembleClassLoader() {
-        List<URL> urls = new LinkedList<>();
-        for (File file : classpath) {
-            try {
-                urls.add(file.toURI().toURL());
-            } catch (MalformedURLException e) {
-                getLogger().debug(e.getMessage());
-            }
-        }
-        if (urls.isEmpty()) {
-            getLogger().debug("No classpath configured; defaulting to system classloader");
-        }
-        return urls.isEmpty() ? ClassLoader.getSystemClassLoader()
-                : new URLClassLoader(urls.toArray(new URL[0]), ClassLoader.getSystemClassLoader());
     }
 
     public void setClasspath(FileCollection classpath) {

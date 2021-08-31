@@ -82,7 +82,12 @@ public class DealProtocolStructureTask extends OutputDirTask {
         int processedFileCount = 0;
         SourceSet sourceSet = ProjectUtils.getMainSourceSet(project);
         File srcDir = ProjectUtils.getAvroSourceDir(project, sourceSet);
+        // TODO zhaowang
+        for (File sourceFile : filterSources(new FileExtensionSpec(Constants.schemaExtension))) {
+            // 先进行schema的结构调整，完成后，将前后的名称以map保存
+        }
         for (File sourceFile : filterSources(new FileExtensionSpec(PROTOCOL_EXTENSION))) {
+            // 调整完成协议的包结构之后，通过上面保存的map将所有存在引用的类型应用处也进行调整
             processProtocolFile(sourceFile, srcDir);
             processedFileCount++;
         }
