@@ -1,5 +1,13 @@
-@namespace("aa")
-record Page {
-  string id;
-  string name;
+@namespace("common")
+protocol util {
+    record Page {
+        int current;
+        int pageSize;
+        int total;
+        @java-class("java.util.ArrayList") array<@java-class("java.lang.Object") string> records;
+    }
+
+    record Test {
+        string id;
+    }
 }

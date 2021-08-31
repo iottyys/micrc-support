@@ -1,13 +1,18 @@
 @namespace("api")
 protocol PersonQueryController {
-  record PersonModelDto {
-    string id;
-    string name;
-  }
-  record PersonModelVo {
-    string id;
-    string name;
-  }
+    record PersonModelDto {
+        string id;
+        string name;
+    }
 
-  @java-class("java.util.ArrayList") array<PersonModelVo> list(PersonModelDto param);
+    record PersonModelVo {
+        string id;
+        string name;
+    }
+
+    import idl "Page.avdl";
+
+    common.Page page(common.Page a);
+
+    @java-class("java.util.ArrayList") array<PersonModelVo> list(PersonModelDto param);
 }

@@ -24,6 +24,7 @@ import io.ttyys.micrc.sad.gradle.plugin.common.file.FileUtils;
 import io.ttyys.micrc.sad.gradle.plugin.common.gradle.GradleCompatibility;
 import io.ttyys.micrc.sad.gradle.plugin.schema.Constants;
 import org.apache.avro.Protocol;
+import org.apache.avro.Schema;
 import org.apache.avro.compiler.idl.Idl;
 import org.apache.avro.compiler.idl.ParseException;
 import org.apache.commons.lang3.StringUtils;
@@ -44,6 +45,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -104,15 +106,29 @@ public class CompileIdlTask extends OutputDirTask {
         String relativePath = idlFile.getParentFile().getAbsolutePath().replaceAll(
                 srcDir.getAbsolutePath().replaceAll("\\\\", "\\\\\\\\"), "");
         String path = protocolDirectory.getAbsolutePath() + relativePath;
-        String protoFileName = FileUtil.getPrefix(idlFile) + Constants.point + Constants.protocolExtension;
+        String fileName = FileUtil.getPrefix(idlFile);
         getLogger().info("Processing {}", idlFile);
         try {
             Idl idl = new Idl(idlFile);
             Protocol protocol = idl.CompilationUnit();
-            File protoFile = new File(path, protoFileName);
-            String protoJson = protocol.toString(true);
-            FileUtils.writeJsonFile(protoFile, protoJson);
-            getLogger().debug("写入协议定义 {}", protoFile.getPath());
+            if (protocol.getMessages().isEmpty()) {
+                // 类型定义 record(java类) enum(java枚举) -- 领域对象用到的多
+                Iterator<Schema> it = protocol.getTypes().iterator();
+                for (int i = 0; it.hasNext(); i++) {
+                    Schema schema = it.next();
+                    String schemaJson = schema.toString(true);
+                    String currentName = String.format("%s%s%s%s%s",
+                            fileName, Constants.schemaNumDelimiter, i + 1, Constants.point, Constants.schemaExtension);
+                    File schemaFile = new File(path, currentName);
+                    FileUtils.writeJsonFile(schemaFile, schemaJson);
+                }
+            } else {
+                // 协议定义
+                String protoJson = protocol.toString(true);
+                File protoFile = new File(path, fileName + Constants.point + Constants.protocolExtension);
+                FileUtils.writeJsonFile(protoFile, protoJson);
+            }
+            getLogger().debug("IDL（{}）编译完成", relativePath + idlFile.getName());
         } catch (IOException | ParseException ex) {
             throw new GradleException(String.format("Failed to compile IDL file %s", idlFile), ex);
         }

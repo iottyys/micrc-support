@@ -13,6 +13,8 @@ public interface Constants {
 
     String idlExtension = "avdl";
     String protocolExtension = "avpr";
+    String schemaExtension = "avsc";
+    String schemaNumDelimiter = "__"; // 分隔符
     String querySuffix = "QueryController";
     String nameKey = "name";
     String namespaceKey = "namespace";
