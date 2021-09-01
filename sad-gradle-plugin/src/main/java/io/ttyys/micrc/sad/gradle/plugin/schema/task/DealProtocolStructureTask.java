@@ -77,12 +77,9 @@ public class DealProtocolStructureTask extends OutputDirTask {
         int processedFileCount = 0;
         SourceSet sourceSet = ProjectUtils.getMainSourceSet(project);
         File srcDir = ProjectUtils.getAvroSourceDir(project, sourceSet);
-        // TODO zhaowang
-        for (File sourceFile : filterSources(new FileExtensionSpec(Constants.schemaExtension))) {
-            // 先进行schema的结构调整，完成后，将前后的名称以map保存
-            processSchemaFile(sourceFile, srcDir);
-            processedFileCount++;
-        }
+        String projectPkg = getProjectPackage(srcDir);
+        Map<String, String> typePkgMap = processSchemaFile(srcDir, projectPkg);
+        processedFileCount += typePkgMap.size();
         for (File sourceFile : filterSources(new FileExtensionSpec(Constants.protocolExtension))) {
             // 调整完成协议的包结构之后，通过上面保存的map将所有存在引用的类型应用处也进行调整
             processProtocolFile(sourceFile, srcDir);
@@ -91,24 +88,40 @@ public class DealProtocolStructureTask extends OutputDirTask {
         setDidWork(processedFileCount > 0);
     }
 
-    private void processSchemaFile(File sourceFile, File srcDir) {
+    private Map<String, String> processSchemaFile(File srcDir, String projectPkg) {
+        Map<String, String> typePkgMap = new HashMap<>(0);
+        Map<String, JSONObject> typeMap = new HashMap<>(0);
         try {
-            String baseNamespace = dealNamespace(sourceFile, srcDir);
-            Schema schema = new Schema.Parser().parse(sourceFile);
-            sourceFile.deleteOnExit();
-            String namespace = baseNamespace + Constants.point
-                    + Constants.map.getOrDefault(schema.getNamespace(), schema.getNamespace());
+            for (File sourceFile : filterSources(new FileExtensionSpec(Constants.schemaExtension))) {
+                String modulePkg = getModulePkg(projectPkg, sourceFile, srcDir);
+                Schema schema = new Schema.Parser().parse(sourceFile);
+                sourceFile.deleteOnExit();
+                String namespace = modulePkg + Constants.point
+                        + Constants.map.getOrDefault(schema.getNamespace(), schema.getNamespace());
 
-            String protoJson = schema.toString(true);
-            JSONObject jsonObject = JSONObject.parseObject(protoJson);
-            // 调整协议类的包结构
-            jsonObject.put(Constants.namespaceKey, namespace);
-            List<Schema.Field> fieldList = schema.getFields();
+                String protoJson = schema.toString(true);
+                JSONObject jsonObject = JSONObject.parseObject(protoJson);
+                // 调整协议类的包结构
+                jsonObject.put(Constants.namespaceKey, namespace);
+                jsonObject.put(Constants.source, sourceFile);
+                String curNamespace = schema.getNamespace();
+                String key = curNamespace + Constants.point + schema.getName();
+                String schemaNamespace = modulePkg + Constants.point + Constants.map.getOrDefault(curNamespace, curNamespace);
+                typePkgMap.put(key, schemaNamespace + Constants.point + schema.getName());
+                typeMap.put(key, jsonObject);
+            }
+            typeMap.forEach((k, v) -> {
+                File sourceFile = (File) v.remove(Constants.source);
+                try {
+                    FileUtils.writeJsonFile(sourceFile, new Schema.Parser().parse(v.toJSONString()).toString(true));
+                } catch (IOException ignored) {
+                }
+            });
 
-            FileUtils.writeJsonFile(sourceFile, new Schema.Parser().parse(jsonObject.toJSONString()).toString(true));
-            getLogger().debug("协议调整结构完成 {}", sourceFile.getPath());
+            getLogger().debug("schema deal structure finish.");
+            return typePkgMap;
         } catch (IOException ex) {
-            throw new GradleException(String.format("Failed to process protocol definition file %s", sourceFile), ex);
+            throw new GradleException("schema deal structure error.", ex);
         }
     }
 
@@ -177,8 +190,30 @@ public class DealProtocolStructureTask extends OutputDirTask {
         // 入参返参
     }
 
-    private String dealNamespace(File sourceFile, File srcDir) {
+    private String getProjectPackage(File srcDir) {
         String namespace;
+        JSONObject projectConfigJson = loadJson(srcDir, Constants.projectJsonFileName);
+        if (projectConfigJson.containsKey(Constants.packagePrefixKey)) {
+            namespace = projectConfigJson.getString(Constants.packagePrefixKey);
+        } else {
+            namespace = "";
+        }
+        return namespace;
+    }
+
+    private String getModulePkg(String projectPkg, File sourceFile, File srcDir) {
+        // 相对路径
+        String relativePath = sourceFile.getParentFile().getAbsolutePath().replaceAll(
+                protocolDirectory.getAbsolutePath().replaceAll("\\\\", "\\\\\\\\"), "");
+        String[] pathArr = relativePath.substring(1).split("\\".equals(File.separator) ? "\\\\" : File.separator); // 模块，架构功能
+        File moduleDir = new File(srcDir.getAbsolutePath(), pathArr[0]);
+        JSONObject moduleConfigJson = loadJson(moduleDir, Constants.moduleJsonFileName);
+        // 构造结构信息
+        return projectPkg + Constants.point + moduleConfigJson.getOrDefault(Constants.packagePrefixKey, pathArr[0]);
+    }
+
+    private String dealNamespace(File sourceFile, File srcDir) {
+        String namespace = getProjectPackage(srcDir);
         JSONObject projectConfigJson = loadJson(srcDir, Constants.projectJsonFileName);
         if (projectConfigJson.containsKey(Constants.packagePrefixKey)) {
             // 相对路径

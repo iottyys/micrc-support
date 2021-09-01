@@ -5,6 +5,7 @@ protocol util {
         int pageSize;
         int total;
         @java-class("java.util.ArrayList") array<@java-class("java.lang.Object") string> records;
+        Test t;
     }
 
     record Test {

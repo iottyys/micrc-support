@@ -20,6 +20,7 @@ public interface Constants {
     String namespaceKey = "namespace";
     String typesKey = "types";
     String javaAnnotationKey = "javaAnnotation";
+    String source = "source";
 
     String projectJsonFileName = "project-config.json";
     String moduleJsonFileName = "module-config.json";
