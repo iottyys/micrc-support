@@ -1,9 +1,6 @@
 package io.ttyys.micrc.sad.gradle.plugin.schema;
 
-import io.ttyys.micrc.sad.gradle.plugin.common.Constants;
 import io.ttyys.micrc.sad.gradle.plugin.common.ProjectUtils;
-import io.ttyys.micrc.sad.gradle.plugin.common.gradle.GradleCompatibility;
-import io.ttyys.micrc.sad.gradle.plugin.extension.SchemaDesignExtension;
 import io.ttyys.micrc.sad.gradle.plugin.schema.task.CompileIdlTask;
 import io.ttyys.micrc.sad.gradle.plugin.schema.task.DealProtocolStructureTask;
 import io.ttyys.micrc.sad.gradle.plugin.schema.task.DealProtocolTechnologyTask;
@@ -16,7 +13,6 @@ import org.gradle.api.tasks.TaskProvider;
 import java.io.File;
 
 import static org.gradle.api.plugins.JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME;
-import static org.gradle.api.plugins.JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME;
 
 public class SchemaDesignPlugin implements Plugin<Project> {
     @Override
@@ -45,9 +41,9 @@ public class SchemaDesignPlugin implements Plugin<Project> {
             task.setDescription(
                     String.format("Generates %s Avro protocol definition files from IDL files.", sourceSet.getName()));
             task.source(ProjectUtils.getAvroSourceDir(project, sourceSet));
-            task.include("**/*." + Constants.IDL_EXTENSION);
+            task.include("**/*." + Constants.idlExtension);
             task.setClasspath(project.getConfigurations().getByName(COMPILE_CLASSPATH_CONFIGURATION_NAME));
-            task.getOutputDir().convention(ProjectUtils.getGeneratedOutputDir(project, sourceSet, Constants.PROTOCOL_EXTENSION));
+            task.getOutputDir().convention(ProjectUtils.getGeneratedOutputDir(project, sourceSet, Constants.protocolExtension));
         });
     }
 
@@ -62,8 +58,8 @@ public class SchemaDesignPlugin implements Plugin<Project> {
             File protocolDirectory = protoTaskProvider.get().getProtocolDirectory();
             task.source(protocolDirectory);
             task.setProtocolDirectory(protocolDirectory);
-            task.include("**/*." + Constants.PROTOCOL_EXTENSION);
-            task.getOutputDir().convention(ProjectUtils.getGeneratedOutputDir(project, sourceSet, Constants.PROTOCOL_EXTENSION));
+            task.include("**/*." + Constants.protocolExtension, "**/*." + Constants.schemaExtension);
+            task.getOutputDir().convention(ProjectUtils.getGeneratedOutputDir(project, sourceSet, Constants.protocolExtension));
         });
     }
 
@@ -76,8 +72,8 @@ public class SchemaDesignPlugin implements Plugin<Project> {
                     String.format("Design technology %s Avro protocol definition files from self.", sourceSet.getName()));
             task.source(protoTaskProvider);
             task.source(ProjectUtils.getAvroSourceDir(project, sourceSet));
-            task.include("**/*." + Constants.PROTOCOL_EXTENSION);
-            task.getOutputDir().convention(ProjectUtils.getGeneratedOutputDir(project, sourceSet, Constants.PROTOCOL_EXTENSION));
+            task.include("**/*." + Constants.protocolExtension);
+            task.getOutputDir().convention(ProjectUtils.getGeneratedOutputDir(project, sourceSet, Constants.protocolExtension));
         });
     }
 }

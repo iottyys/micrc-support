@@ -33,12 +33,7 @@ import org.gradle.api.tasks.TaskAction;
 import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-
-import static io.ttyys.micrc.sad.gradle.plugin.common.Constants.PROTOCOL_EXTENSION;
+import java.util.*;
 
 /**
  * 设计结构说明 Structure
@@ -71,7 +66,7 @@ public class DealProtocolStructureTask extends OutputDirTask {
     }
 
     private void failOnUnsupportedFiles() {
-        FileCollection unsupportedFiles = filterSources(new NotSpec<>(new FileExtensionSpec(PROTOCOL_EXTENSION)));
+        FileCollection unsupportedFiles = filterSources(new NotSpec<>(new FileExtensionSpec(Constants.protocolExtension, Constants.schemaExtension)));
         if (!unsupportedFiles.isEmpty()) {
             throw new GradleException(
                     String.format("Unsupported file extension for the following files: %s", unsupportedFiles));
@@ -85,8 +80,10 @@ public class DealProtocolStructureTask extends OutputDirTask {
         // TODO zhaowang
         for (File sourceFile : filterSources(new FileExtensionSpec(Constants.schemaExtension))) {
             // 先进行schema的结构调整，完成后，将前后的名称以map保存
+            processSchemaFile(sourceFile, srcDir);
+            processedFileCount++;
         }
-        for (File sourceFile : filterSources(new FileExtensionSpec(PROTOCOL_EXTENSION))) {
+        for (File sourceFile : filterSources(new FileExtensionSpec(Constants.protocolExtension))) {
             // 调整完成协议的包结构之后，通过上面保存的map将所有存在引用的类型应用处也进行调整
             processProtocolFile(sourceFile, srcDir);
             processedFileCount++;
@@ -94,12 +91,34 @@ public class DealProtocolStructureTask extends OutputDirTask {
         setDidWork(processedFileCount > 0);
     }
 
+    private void processSchemaFile(File sourceFile, File srcDir) {
+        try {
+            String baseNamespace = dealNamespace(sourceFile, srcDir);
+            Schema schema = new Schema.Parser().parse(sourceFile);
+            sourceFile.deleteOnExit();
+            String namespace = baseNamespace + Constants.point
+                    + Constants.map.getOrDefault(schema.getNamespace(), schema.getNamespace());
+
+            String protoJson = schema.toString(true);
+            JSONObject jsonObject = JSONObject.parseObject(protoJson);
+            // 调整协议类的包结构
+            jsonObject.put(Constants.namespaceKey, namespace);
+            List<Schema.Field> fieldList = schema.getFields();
+
+            FileUtils.writeJsonFile(sourceFile, new Schema.Parser().parse(jsonObject.toJSONString()).toString(true));
+            getLogger().debug("协议调整结构完成 {}", sourceFile.getPath());
+        } catch (IOException ex) {
+            throw new GradleException(String.format("Failed to process protocol definition file %s", sourceFile), ex);
+        }
+    }
+
     private void processProtocolFile(File sourceFile, File srcDir) {
         try {
             String baseNamespace = dealNamespace(sourceFile, srcDir);
             Protocol protocol = Protocol.parse(sourceFile);
             sourceFile.deleteOnExit();
-            String namespace = baseNamespace + Constants.point + Constants.map.get(protocol.getNamespace());
+            String curNamespace = protocol.getNamespace();
+            String namespace = baseNamespace + Constants.point + Constants.map.getOrDefault(curNamespace, curNamespace);
 
             String protoJson = protocol.toString(true);
             JSONObject jsonObject = JSONObject.parseObject(protoJson);
@@ -108,7 +127,7 @@ public class DealProtocolStructureTask extends OutputDirTask {
 
             setTypeNamespace(baseNamespace, protocol, jsonObject);
 
-            FileUtils.writeJsonFile(sourceFile, jsonObject.toJSONString());
+            FileUtils.writeJsonFile(sourceFile, Protocol.parse(jsonObject.toJSONString()).toString(true));
             getLogger().debug("协议调整结构完成 {}", sourceFile.getPath());
         } catch (IOException ex) {
             throw new GradleException(String.format("Failed to process protocol definition file %s", sourceFile), ex);
@@ -123,29 +142,39 @@ public class DealProtocolStructureTask extends OutputDirTask {
      * @param jsonObject    json
      */
     private void setTypeNamespace(String baseNamespace, Protocol protocol, JSONObject jsonObject) {
-        String dtoNamespace;
+        String schemaNamespace;
 
         Collection<Schema> schemaColl = protocol.getTypes();
         Map<String, String> map = new HashMap<>(0);
         for (Schema schema : schemaColl) {
-            if (protocol.getName().contains(Constants.querySuffix)) {
-                // 查询api Controller
-                dtoNamespace = baseNamespace + Constants.point
-                        + String.format(
-                        Constants.map.get("query" + (schema.getName().toLowerCase().endsWith("dto") ? "dto" : "vo")),
-                        protocol.getName().replace(Constants.querySuffix, "").toLowerCase()
-                );
+            if (schema.getNamespace() != null && schema.getNamespace().equals(protocol.getNamespace())) {
+                String schemaType = schema.getName().toLowerCase().endsWith("dto") ? "dto" : "vo";
+                if (protocol.getName().contains(Constants.querySuffix)) {
+                    // 查询api Controller
+                    schemaNamespace = baseNamespace + Constants.point
+                            + String.format(
+                            Constants.map.getOrDefault("query" + schemaType, schemaType),
+                            protocol.getName().replace(Constants.querySuffix, "").toLowerCase()
+                    );
+                } else {
+                    // 应用api Controller
+                    schemaNamespace = baseNamespace + Constants.map.getOrDefault(schemaType, schemaType);
+                }
+                map.put(schema.getName(), schemaNamespace + Constants.point + schema.getName());
             } else {
-                // 应用api Controller
-                dtoNamespace = baseNamespace + Constants.map.get((schema.getName().toLowerCase().endsWith("dto") ? "dto" : "vo"));
+                String curNamespace = schema.getNamespace();
+                schemaNamespace = baseNamespace + Constants.point + Constants.map.getOrDefault(curNamespace, curNamespace);
+                map.put(curNamespace + Constants.point + schema.getName(),
+                        schemaNamespace + Constants.point + schema.getName());
             }
-            map.put(schema.getName(), dtoNamespace);
         }
+        // (定义类)类型属性  --  注意嵌套类型定义
         JSONArray typesJsonArray = jsonObject.getJSONArray(Constants.typesKey);
         for (int i = 0, len = typesJsonArray.size(); i < len; i++) {
             JSONObject typeJsonObject = typesJsonArray.getJSONObject(i);
             typeJsonObject.put(Constants.namespaceKey, map.get(typeJsonObject.getString(Constants.nameKey)));
         }
+        // 入参返参
     }
 
     private String dealNamespace(File sourceFile, File srcDir) {
