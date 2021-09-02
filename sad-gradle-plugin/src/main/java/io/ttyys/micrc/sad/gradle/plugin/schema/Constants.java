@@ -18,7 +18,10 @@ public interface Constants {
     String querySuffix = "QueryController";
     String nameKey = "name";
     String namespaceKey = "namespace";
+    String fieldsKey = "fields";
     String typesKey = "types";
+    String typeKey = "type";
+    String itemsKey = "items";
     String javaAnnotationKey = "javaAnnotation";
     String source = "source";
 

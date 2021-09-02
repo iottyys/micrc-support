@@ -4,7 +4,7 @@ protocol util {
         int current;
         int pageSize;
         int total;
-        @java-class("java.util.ArrayList") array<@java-class("java.lang.Object") string> records;
+        @java-class("java.util.ArrayList") array<Test> records;
         Test t;
     }
 
