@@ -15,7 +15,7 @@ public interface Constants {
     String protocolExtension = "avpr";
     String schemaExtension = "avsc";
     String schemaNumDelimiter = "__"; // 分隔符
-    String querySuffix = "QueryController";
+    String queryKeyword = "Query";
     String nameKey = "name";
     String namespaceKey = "namespace";
     String fieldsKey = "fields";

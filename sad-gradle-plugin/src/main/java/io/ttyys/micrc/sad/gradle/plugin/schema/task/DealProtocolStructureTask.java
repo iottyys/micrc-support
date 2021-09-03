@@ -52,6 +52,9 @@ public class DealProtocolStructureTask extends OutputDirTask {
     private final Project project;
 
     private File protocolDirectory;
+    /**
+     * 类型Map<原始包名.schemaName/protocolName,调整后包名.schemaName/protocolName>
+     */
     private final Map<String, String> typePkgMap;
 
     @Inject
@@ -85,7 +88,8 @@ public class DealProtocolStructureTask extends OutputDirTask {
         processedFileCount += typePkgMap.size();
         for (File sourceFile : filterSources(new FileExtensionSpec(Constants.protocolExtension))) {
             // 调整完成协议的包结构之后，通过上面保存的map将所有存在引用的类型应用处也进行调整
-            processProtocolFile(sourceFile, srcDir, typePkgMap);
+            String modulePkg = getModulePkg(projectPkg, sourceFile, srcDir);
+            processProtocolFile(sourceFile, modulePkg);
             processedFileCount++;
         }
         setDidWork(processedFileCount > 0);
@@ -97,11 +101,12 @@ public class DealProtocolStructureTask extends OutputDirTask {
                 Schema schema = new Schema.Parser().parse(sourceFile);
                 sourceFile.deleteOnExit();
 
-                String protoJson = schema.toString();
-                JSONObject jsonObject = JSONObject.parseObject(protoJson);
+                String json = schema.toString();
+                JSONObject jsonObject = JSONObject.parseObject(json);
                 // 调整协议类的包结构
+                String fileNamespace = schema.getNamespace();
                 String modulePkg = getModulePkg(projectPkg, sourceFile, srcDir);
-                checkAndSetSchemaFieldTypeNamespace(jsonObject, modulePkg);
+                checkAndSetSchemaFieldTypeNamespace(jsonObject, modulePkg, fileNamespace);
                 FileUtils.writeJsonFile(sourceFile, new Schema.Parser().parse(jsonObject.toJSONString()).toString(true));
             }
             getLogger().debug("schema deal structure finish.");
@@ -110,7 +115,7 @@ public class DealProtocolStructureTask extends OutputDirTask {
         }
     }
 
-    private void checkAndSetSchemaFieldTypeNamespace(JSONObject jsonObject, String modulePkg) {
+    private void checkAndSetSchemaFieldTypeNamespace(JSONObject jsonObject, String modulePkg, String fileNamespace) {
         String curNamespace = jsonObject.getString(Constants.namespaceKey);
         String curName = jsonObject.getString(Constants.nameKey);
         String key = curNamespace + Constants.point + curName;
@@ -122,18 +127,18 @@ public class DealProtocolStructureTask extends OutputDirTask {
             for (int j = 0, jLen = fieldsJsonArray.size(); j < jLen; j++) {
                 JSONObject fieldJsonObject = fieldsJsonArray.getJSONObject(j);
                 Object typeObject = fieldJsonObject.get(Constants.typeKey);
-                setRecordNamespace(typeObject, modulePkg, schemaNamespace);
+                setRecordNamespace(typeObject, modulePkg, schemaNamespace, fileNamespace);
             }
         }
     }
 
-    private void setRecordNamespace(Object typeObject, String modulePkg, String namespace) {
+    private void setRecordNamespace(Object typeObject, String modulePkg, String namespace, String fileNamespace) {
         if (typeObject instanceof JSONObject) {
             JSONObject typeJsonObject = (JSONObject) typeObject;
             String typeType = typeJsonObject.getString(Constants.typeKey);
             if ("record".equals(typeType)) {
+                String curTypeNamespace = typeJsonObject.getString(Constants.namespaceKey);
                 if (typeJsonObject.containsKey(Constants.namespaceKey)) {
-                    String curTypeNamespace = typeJsonObject.getString(Constants.namespaceKey);
                     String typeNamespace = modulePkg + Constants.point
                             + Constants.map.getOrDefault(curTypeNamespace, curTypeNamespace);
                     typeJsonObject.put(Constants.namespaceKey, typeNamespace);
@@ -142,26 +147,24 @@ public class DealProtocolStructureTask extends OutputDirTask {
                 }
             } else if ("array".equals(typeType)) {
                 Object arrayItemObject = typeJsonObject.get(Constants.itemsKey);
-                setRecordNamespace(arrayItemObject, modulePkg, namespace);
+                setRecordNamespace(arrayItemObject, modulePkg, namespace, fileNamespace);
             }
-            checkAndSetSchemaFieldTypeNamespace(typeJsonObject, modulePkg);
+            checkAndSetSchemaFieldTypeNamespace(typeJsonObject, modulePkg, fileNamespace);
         }
     }
 
-    private void processProtocolFile(File sourceFile, File srcDir, Map<String, String> typePkgMap) {
+    private void processProtocolFile(File sourceFile, String modulePkg) {
         try {
-            String baseNamespace = dealNamespace(sourceFile, srcDir);
             Protocol protocol = Protocol.parse(sourceFile);
             sourceFile.deleteOnExit();
-            String curNamespace = protocol.getNamespace();
-            String namespace = baseNamespace + Constants.point + Constants.map.getOrDefault(curNamespace, curNamespace);
 
             String protoJson = protocol.toString();
             JSONObject jsonObject = JSONObject.parseObject(protoJson);
             // 调整协议类的包结构
-            json Object.put(Constants.namespaceKey, namespace);
+            String fileNamespace = protocol.getNamespace();
+            checkAndSetSchemaFieldTypeNamespace(jsonObject, modulePkg, fileNamespace);
 
-//            loadTypePkg(baseNamespace, protocol, typePkgMap);
+            load TypePkg(modulePkg, protocol);
 
             // (定义类)类型属性  --  注意嵌套类型定义
             checkAndReplaceValue(typePkgMap, jsonObject, Constants.typesKey);
@@ -186,9 +189,8 @@ public class DealProtocolStructureTask extends OutputDirTask {
      *
      * @param baseNamespace 基础包
      * @param protocol      协议
-     * @param typePkgMap    类型Map<原始包名.schemaName,调整后包名.schemaName>
      */
-    private void loadTypePkg(String baseNamespace, Protocol protocol, Map<String, String> typePkgMap) {
+    private void loadTypePkg(String baseNamespace, Protocol protocol) {
         String schemaNamespace;
 
         Collection<Schema> schemaColl = protocol.getTypes();
@@ -197,12 +199,12 @@ public class DealProtocolStructureTask extends OutputDirTask {
             String key = curNamespace + Constants.point + schema.getName();
             if (curNamespace != null && curNamespace.equals(protocol.getNamespace())) {
                 String schemaType = schema.getName().toLowerCase().endsWith("dto") ? "dto" : "vo";
-                if (protocol.getName().contains(Constants.querySuffix)) {
+                if (protocol.getName().contains(Constants.queryKeyword)) {
                     // 查询api Controller
                     schemaNamespace = baseNamespace + Constants.point
                             + String.format(
                             Constants.map.getOrDefault("query" + schemaType, schemaType),
-                            protocol.getName().replace(Constants.querySuffix, "").toLowerCase()
+                            protocol.getName().replace(Constants.queryKeyword, "").toLowerCase()
                     );
                 } else {
                     // 应用api Controller
@@ -263,29 +265,6 @@ public class DealProtocolStructureTask extends OutputDirTask {
         JSONObject moduleConfigJson = loadJson(moduleDir, Constants.moduleJsonFileName);
         // 构造结构信息
         return projectPkg + Constants.point + moduleConfigJson.getOrDefault(Constants.packagePrefixKey, pathArr[0]);
-    }
-
-    private String dealNamespace(File sourceFile, File srcDir) {
-        String namespace = getProjectPackage(srcDir);
-        JSONObject projectConfigJson = loadJson(srcDir, Constants.projectJsonFileName);
-        if (projectConfigJson.containsKey(Constants.packagePrefixKey)) {
-            // 相对路径
-            String relativePath = sourceFile.getParentFile().getAbsolutePath().replaceAll(
-                    protocolDirectory.getAbsolutePath().replaceAll("\\\\", "\\\\\\\\"), "");
-            String[] pathArr = relativePath.substring(1).split("\\".equals(File.separator) ? "\\\\" : File.separator); // 模块，架构功能
-            File moduleDir = new File(srcDir.getAbsolutePath(), pathArr[0]);
-            JSONObject moduleConfigJson = loadJson(moduleDir, Constants.moduleJsonFileName);
-            // 构造结构信息
-            namespace = projectConfigJson.getString(Constants.packagePrefixKey);
-            if (moduleConfigJson.containsKey(Constants.packagePrefixKey)) {
-                namespace += Constants.point + moduleConfigJson.getString(Constants.packagePrefixKey);
-            } else {
-                namespace += Constants.point + pathArr[0];
-            }
-        } else {
-            namespace = "";
-        }
-        return namespace;
     }
 
     public JSONObject loadJson(File srcDir, String fileName) {
