@@ -49,13 +49,15 @@ import java.util.*;
  * 编译目录 build/avpr
  */
 public class DealProtocolStructureTask extends OutputDirTask {
-    private Project project;
+    private final Project project;
 
     private File protocolDirectory;
+    private final Map<String, String> typePkgMap;
 
     @Inject
     public DealProtocolStructureTask() {
         project = getProject();
+        typePkgMap = new HashMap<>(0);
     }
 
     @TaskAction
@@ -78,8 +80,8 @@ public class DealProtocolStructureTask extends OutputDirTask {
         SourceSet sourceSet = ProjectUtils.getMainSourceSet(project);
         File srcDir = ProjectUtils.getAvroSourceDir(project, sourceSet);
         String projectPkg = getProjectPackage(srcDir);
-        Map<String, String> typePkgMap = new HashMap<>(0);
-        processSchemaFile(srcDir, projectPkg, typePkgMap);
+
+        processSchemaFile(srcDir, projectPkg);
         processedFileCount += typePkgMap.size();
         for (File sourceFile : filterSources(new FileExtensionSpec(Constants.protocolExtension))) {
             // 调整完成协议的包结构之后，通过上面保存的map将所有存在引用的类型应用处也进行调整
@@ -89,24 +91,17 @@ public class DealProtocolStructureTask extends OutputDirTask {
         setDidWork(processedFileCount > 0);
     }
 
-    private void processSchemaFile(File srcDir, String projectPkg, Map<String, String> typePkgMap) {
+    private void processSchemaFile(File srcDir, String projectPkg) {
         try {
             for (File sourceFile : filterSources(new FileExtensionSpec(Constants.schemaExtension))) {
-                String modulePkg = getModulePkg(projectPkg, sourceFile, srcDir);
                 Schema schema = new Schema.Parser().parse(sourceFile);
                 sourceFile.deleteOnExit();
-                String namespace = modulePkg + Constants.point
-                        + Constants.map.getOrDefault(schema.getNamespace(), schema.getNamespace());
 
                 String protoJson = schema.toString();
                 JSONObject jsonObject = JSONObject.parseObject(protoJson);
                 // 调整协议类的包结构
-                jsonObject.put(Constants.namespaceKey, namespace);
-                String curNamespace = schema.getNamespace();
-                String key = curNamespace + Constants.point + schema.getName();
-                String schemaNamespace = modulePkg + Constants.point + Constants.map.getOrDefault(curNamespace, curNamespace);
-                typePkgMap.put(key, schemaNamespace + Constants.point + schema.getName());
-                checkAndSetSchemaFieldTypeNamespace(jsonObject, modulePkg, namespace);
+                String modulePkg = getModulePkg(projectPkg, sourceFile, srcDir);
+                checkAndSetSchemaFieldTypeNamespace(jsonObject, modulePkg);
                 FileUtils.writeJsonFile(sourceFile, new Schema.Parser().parse(jsonObject.toJSONString()).toString(true));
             }
             getLogger().debug("schema deal structure finish.");
@@ -115,13 +110,19 @@ public class DealProtocolStructureTask extends OutputDirTask {
         }
     }
 
-    private void checkAndSetSchemaFieldTypeNamespace(JSONObject jsonObject, String modulePkg, String namespace) {
+    private void checkAndSetSchemaFieldTypeNamespace(JSONObject jsonObject, String modulePkg) {
+        String curNamespace = jsonObject.getString(Constants.namespaceKey);
+        String curName = jsonObject.getString(Constants.nameKey);
+        String key = curNamespace + Constants.point + curName;
+        String schemaNamespace = modulePkg + Constants.point + Constants.map.getOrDefault(curNamespace, curNamespace);
+        jsonObject.put(Constants.namespaceKey, schemaNamespace);
+        typePkgMap.put(key, schemaNamespace + Constants.point + curName);
         if (jsonObject.containsKey(Constants.fieldsKey)) {
             JSONArray fieldsJsonArray = jsonObject.getJSONArray(Constants.fieldsKey);
             for (int j = 0, jLen = fieldsJsonArray.size(); j < jLen; j++) {
                 JSONObject fieldJsonObject = fieldsJsonArray.getJSONObject(j);
                 Object typeObject = fieldJsonObject.get(Constants.typeKey);
-                setRecordNamespace(typeObject, modulePkg, namespace);
+                setRecordNamespace(typeObject, modulePkg, schemaNamespace);
             }
         }
     }
@@ -143,7 +144,7 @@ public class DealProtocolStructureTask extends OutputDirTask {
                 Object arrayItemObject = typeJsonObject.get(Constants.itemsKey);
                 setRecordNamespace(arrayItemObject, modulePkg, namespace);
             }
-            checkAndSetSchemaFieldTypeNamespace(typeJsonObject, modulePkg, namespace);
+            checkAndSetSchemaFieldTypeNamespace(typeJsonObject, modulePkg);
         }
     }
 
@@ -155,18 +156,21 @@ public class DealProtocolStructureTask extends OutputDirTask {
             String curNamespace = protocol.getNamespace();
             String namespace = baseNamespace + Constants.point + Constants.map.getOrDefault(curNamespace, curNamespace);
 
-            String protoJson = protocol.toString(true);
+            String protoJson = protocol.toString();
             JSONObject jsonObject = JSONObject.parseObject(protoJson);
             // 调整协议类的包结构
-            jsonObject.put(Constants.namespaceKey, namespace);
+            json Object.put(Constants.namespaceKey, namespace);
 
-            l oadTypePkg(baseNamespace, protocol, typePkgMap);
+//            loadTypePkg(baseNamespace, protocol, typePkgMap);
 
             // (定义类)类型属性  --  注意嵌套类型定义
+            checkAndReplaceValue(typePkgMap, jsonObject, Constants.typesKey);
             JSONArray typesJsonArray = jsonObject.getJSONArray(Constants.typesKey);
             for (int i = 0, len = typesJsonArray.size(); i < len; i++) {
                 JSONObject typeJsonObject = typesJsonArray.getJSONObject(i);
-                typeJsonObject.put(Constants.namespaceKey, typePkgMap.get(typeJsonObject.getString(Constants.nameKey)));
+                String typeAllName = typePkgMap.get(typeJsonObject.getString(Constants.namespaceKey)
+                        + Constants.point + typeJsonObject.getString(Constants.nameKey));
+                typeJsonObject.put(Constants.namespaceKey, typeAllName);
             }
             // 入参返参
 
@@ -189,7 +193,9 @@ public class DealProtocolStructureTask extends OutputDirTask {
 
         Collection<Schema> schemaColl = protocol.getTypes();
         for (Schema schema : schemaColl) {
-            if (schema.getNamespace() != null && schema.getNamespace().equals(protocol.getNamespace())) {
+            String curNamespace = schema.getNamespace();
+            String key = curNamespace + Constants.point + schema.getName();
+            if (curNamespace != null && curNamespace.equals(protocol.getNamespace())) {
                 String schemaType = schema.getName().toLowerCase().endsWith("dto") ? "dto" : "vo";
                 if (protocol.getName().contains(Constants.querySuffix)) {
                     // 查询api Controller
@@ -200,32 +206,39 @@ public class DealProtocolStructureTask extends OutputDirTask {
                     );
                 } else {
                     // 应用api Controller
-                    schemaNamespace = baseNamespace + Constants.map.getOrDefault(schemaType, schemaType);
+                    schemaNamespace = baseNamespace + Constants.point + Constants.map.getOrDefault(schemaType, schemaType);
                 }
-                typePkgMap.put(schema.getName(), schemaNamespace + Constants.point + schema.getName());
             } else {
-                String curNamespace = schema.getNamespace();
                 schemaNamespace = baseNamespace + Constants.point + Constants.map.getOrDefault(curNamespace, curNamespace);
-                typePkgMap.put(curNamespace + Constants.point + schema.getName(),
-                        schemaNamespace + Constants.point + schema.getName());
             }
+            typePkgMap.put(key, schemaNamespace + Constants.point + schema.getName());
         }
     }
 
     private void checkAndSetType(Map<String, String> typeNameMap, JSONArray jsonArray, String key) {
         for (int j = 0, jLen = jsonArray.size(); j < jLen; j++) {
-            JSONObject requestParam = jsonArray.getJSONObject(j);
-            checkAndReplaceValue(typeNameMap, requestParam, key);
+            JSONObject jsonObject = jsonArray.getJSONObject(j);
+            checkAndReplaceValue(typeNameMap, jsonObject, key);
         }
     }
 
-    private void checkAndReplaceValue(Map<String, String> typeNameMap, JSONObject json, String key) {
+    private void checkAndReplaceValue(Map<String, String> typePkgMap, JSONObject json, String key) {
         Object type = json.get(key);
-        if (type instanceof JSONObject) {
-            checkAndReplaceValue(typeNameMap, json.getJSONObject(key), "items");
+        if (type instanceof JSONArray) {
+            JSONArray jsonArray = json.getJSONArray(key);
+            for (int j = 0, jLen = jsonArray.size(); j < jLen; j++) {
+                JSONObject jsonObject = jsonArray.getJSONObject(j);
+                String typeAllName = typePkgMap.get(jsonObject.getString(Constants.namespaceKey)
+                        + Constants.point + jsonObject.getString(Constants.nameKey));
+                jsonObject.put(Constants.namespaceKey, typeAllName);
+                checkAndReplaceValue(typePkgMap, jsonObject, key);
+            }
+        } else if (type instanceof JSONObject) {
+            JSONObject jsonObject = json.getJSONObject(key);
+            checkAndReplaceValue(typePkgMap, jsonObject, "items");
         } else {
-            if (typeNameMap.containsKey(json.getString(key))) {
-                json.put(key, typeNameMap.get(json.getString(key)));
+            if (typePkgMap.containsKey(json.getString(key))) {
+                json.put(key, typePkgMap.get(json.getString(key)));
             }
         }
     }
