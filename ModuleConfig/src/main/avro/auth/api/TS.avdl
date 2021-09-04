@@ -1,0 +1,17 @@
+@namespace("t")
+protocol T1 {
+    record T11 {
+        string id = "T11";
+        T11 t11;
+    }
+    record T12 {
+        string id = "T12";
+        T11 t11;
+        tm2.T13 t13;
+    }
+    @namespace("tm2")
+    record T13 {
+        string id = "T13";
+    }
+
+}

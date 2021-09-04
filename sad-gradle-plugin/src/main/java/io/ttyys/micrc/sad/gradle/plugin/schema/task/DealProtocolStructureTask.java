@@ -115,6 +115,40 @@ public class DealProtocolStructureTask extends OutputDirTask {
         }
     }
 
+    private void designPkg(String modulePkg, JSONObject jsonObj, JSONObject jsonMainObj) {
+        // 设计当前传进来的jsonObj的namespace，并将其与类全名的旧名称与新名称映射关系加入到typePkgMap
+        String curNamespace = jsonObj.getString(Constants.namespaceKey);
+        String newNamespace;
+        String curName = jsonObj.getString(Constants.nameKey);
+        if (typePkgMap.containsKey(curNamespace)) {
+            newNamespace = typePkgMap.get(curNamespace);
+        } else {
+            newNamespace = modulePkg + Constants.point + Constants.map.getOrDefault(curNamespace, curNamespace);
+            typePkgMap.put(curNamespace, newNamespace);
+        }
+        jsonObj.put(Constants.namespaceKey, newNamespace);
+        String key = curNamespace + Constants.point + curName;
+        typePkgMap.put(key, newNamespace + Constants.point + curName);
+
+        if (jsonObj.containsKey(Constants.fieldsKey)) {
+            JSONArray fieldsJsonArray = jsonObj.getJSONArray(Constants.fieldsKey);
+            for (int j = 0, jLen = fieldsJsonArray.size(); j < jLen; j++) {
+                JSONObject fieldJsonObject = fieldsJsonArray.getJSONObject(j);
+                Object typeObject = fieldJsonObject.get(Constants.typeKey);
+                if (typeObject instanceof JSONObject) {
+                    JSONObject typeJsonObj = (JSONObject) typeObject;
+                    Object o = typeJsonObj.get(Constants.typeKey);
+                    if (o instanceof String) {
+                        String typeStr = (String) o;
+                        if (Schema.Type.RECORD.getName().equals(typeStr)) {
+                        } else if (Schema.Type.ARRAY.getName().equals(typeStr)) {
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private void checkAndSetSchemaFieldTypeNamespace(JSONObject jsonObject, String modulePkg, String fileNamespace) {
         String curNamespace = jsonObject.getString(Constants.namespaceKey);
         String curName = jsonObject.getString(Constants.nameKey);
@@ -164,7 +198,7 @@ public class DealProtocolStructureTask extends OutputDirTask {
             String fileNamespace = protocol.getNamespace();
             checkAndSetSchemaFieldTypeNamespace(jsonObject, modulePkg, fileNamespace);
 
-            load TypePkg(modulePkg, protocol);
+            loadTypePkg(modulePkg, protocol);
 
             // (定义类)类型属性  --  注意嵌套类型定义
             checkAndReplaceValue(typePkgMap, jsonObject, Constants.typesKey);

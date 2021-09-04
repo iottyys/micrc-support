@@ -1,0 +1,6 @@
+@namespace("t")
+protocol p {
+    import idl "TS.avdl";
+
+    tm2.T13 test1(T11 t11);
+}
