@@ -23,6 +23,7 @@ import io.ttyys.micrc.sad.gradle.plugin.common.file.FileUtils;
 import io.ttyys.micrc.sad.gradle.plugin.schema.Constants;
 import org.apache.avro.Protocol;
 import org.apache.avro.Schema;
+import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.file.FileCollection;
@@ -142,6 +143,20 @@ public class DealProtocolStructureTask extends OutputDirTask {
                         String typeStr = (String) o;
                         if (Schema.Type.RECORD.getName().equals(typeStr)) {
                         } else if (Schema.Type.ARRAY.getName().equals(typeStr)) {
+                            JSONObject itemJsonObj = typeJsonObj.getJSONObject(Constants.itemsKey);
+                            String itemNamespace = itemJsonObj.getString(Constants.namespaceKey);
+                            String itemName = itemJsonObj.getString(Constants.nameKey);
+                            if (StringUtils.isBlank(itemNamespace)) {
+                                itemNamespace = newNamespace;
+                                typePkgMap.put(itemName, itemNamespace + Constants.point + itemName);
+                            } else {
+                                String oldItemNamespace = itemNamespace;
+                                String itemKey = itemNamespace + Constants.point + itemName;
+                                itemNamespace = modulePkg + Constants.point + itemNamespace;
+                                typePkgMap.put(oldItemNamespace, itemNamespace);
+                                typePkgMap.put(itemKey, itemNamespace + Constants.point + itemName);
+                            }
+                            itemJsonObj.put(Constants.namespaceKey, itemNamespace);
                         }
                     }
                 }
