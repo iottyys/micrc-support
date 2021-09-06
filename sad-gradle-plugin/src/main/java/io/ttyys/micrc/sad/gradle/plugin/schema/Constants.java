@@ -24,6 +24,8 @@ public interface Constants {
     String typeKey = "type";
     String itemsKey = "items";
     String messagesKey = "messages";
+    String requestKey = "request";
+    String responseKey = "response";
     String javaAnnotationKey = "javaAnnotation";
     String source = "source";
 
