@@ -35,6 +35,7 @@ import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 设计结构说明 Structure
@@ -107,7 +108,8 @@ public class DealProtocolStructureTask extends OutputDirTask {
                 // 调整协议类的包结构
                 String fileNamespace = schema.getNamespace();
                 String modulePkg = getModulePkg(projectPkg, sourceFile, srcDir);
-                checkAndSetSchemaFieldTypeNamespace(jsonObject, modulePkg, fileNamespace);
+                designPkg(modulePkg, jsonObject, jsonObject);
+//                checkAndSetSchemaFieldTypeNamespace(jsonObject, modulePkg, fileNamespace);
                 FileUtils.writeJsonFile(sourceFile, new Schema.Parser().parse(jsonObject.toJSONString()).toString(true));
             }
             getLogger().debug("schema deal structure finish.");
@@ -131,32 +133,66 @@ public class DealProtocolStructureTask extends OutputDirTask {
         String key = curNamespace + Constants.point + curName;
         typePkgMap.put(key, newNamespace + Constants.point + curName);
 
-        if (jsonObj.containsKey(Constants.fieldsKey)) {
-            JSONArray fieldsJsonArray = jsonObj.getJSONArray(Constants.fieldsKey);
-            for (int j = 0, jLen = fieldsJsonArray.size(); j < jLen; j++) {
-                JSONObject fieldJsonObject = fieldsJsonArray.getJSONObject(j);
-                Object typeObject = fieldJsonObject.get(Constants.typeKey);
-                if (typeObject instanceof JSONObject) {
-                    JSONObject typeJsonObj = (JSONObject) typeObject;
-                    Object o = typeJsonObj.get(Constants.typeKey);
-                    if (o instanceof String) {
-                        String typeStr = (String) o;
-                        if (Schema.Type.RECORD.getName().equals(typeStr)) {
-                        } else if (Schema.Type.ARRAY.getName().equals(typeStr)) {
-                            JSONObject itemJsonObj = typeJsonObj.getJSONObject(Constants.itemsKey);
-                            String itemNamespace = itemJsonObj.getString(Constants.namespaceKey);
-                            String itemName = itemJsonObj.getString(Constants.nameKey);
-                            if (StringUtils.isBlank(itemNamespace)) {
-                                itemNamespace = newNamespace;
-                                typePkgMap.put(itemName, itemNamespace + Constants.point + itemName);
+        if (jsonObj.containsKey(Constants.protocolKey)) {
+            // types
+            if (jsonObj.containsKey(Constants.typesKey)) {
+                JSONArray typeJsonArray = jsonObj.getJSONArray(Constants.typesKey);
+                for (int i = 0, len = typeJsonArray.size(); i < len; i++) {
+                    designPkg(modulePkg, typeJsonArray.getJSONObject(i), jsonMainObj);
+                }
+            }
+            // messages
+            if (jsonObj.containsKey(Constants.messagesKey)) {
+                JSONArray messageJsonArray = jsonObj.getJSONArray(Constants.messagesKey);
+                for (int i = 0, len = messageJsonArray.size(); i < len; i++) {
+                    // designPkg(modulePkg, typeJsonArray.getJSONObject(i), jsonMainObj);
+                }
+            }
+        } else {
+            // fields
+            if (jsonObj.containsKey(Constants.fieldsKey)) {
+                JSONArray fieldsJsonArray = jsonObj.getJSONArray(Constants.fieldsKey);
+                for (int j = 0, jLen = fieldsJsonArray.size(); j < jLen; j++) {
+                    JSONObject fieldJsonObject = fieldsJsonArray.getJSONObject(j);
+                    Object typeObject = fieldJsonObject.get(Constants.typeKey);
+                    if (typeObject instanceof JSONObject) {
+                        JSONObject typeJsonObj = (JSONObject) typeObject;
+                        Object o = typeJsonObj.get(Constants.typeKey);
+                        if (o instanceof String) {
+                            String typeStr = (String) o;
+                            JSONObject itemJsonObj = null;
+                            if (Schema.Type.RECORD.getName().equals(typeStr)) {
+                                itemJsonObj = typeJsonObj;
+                            } else if (Schema.Type.ARRAY.getName().equals(typeStr)) {
+                                itemJsonObj = typeJsonObj.getJSONObject(Constants.itemsKey);
                             } else {
-                                String oldItemNamespace = itemNamespace;
-                                String itemKey = itemNamespace + Constants.point + itemName;
-                                itemNamespace = modulePkg + Constants.point + itemNamespace;
-                                typePkgMap.put(oldItemNamespace, itemNamespace);
-                                typePkgMap.put(itemKey, itemNamespace + Constants.point + itemName);
+                                List<String> typeNameList = Arrays.stream(Schema.Type.values())
+                                        .map(Schema.Type::getName).collect(Collectors.toList());
+                                if (!typeNameList.contains(typeStr)) {
+                                    String newTypeStr;
+                                    if (typeStr.contains(Constants.point)) {
+                                        newTypeStr = typePkgMap.getOrDefault(typeStr, typeStr);
+                                    } else {
+                                        newTypeStr = jsonMainObj.getString(Constants.namespaceKey) + Constants.point + typeStr;
+                                    }
+                                    typeJsonObj.put(Constants.typeKey, newTypeStr);
+                                }
                             }
-                            itemJsonObj.put(Constants.namespaceKey, itemNamespace);
+                            if (itemJsonObj != null) {
+                                String itemNamespace = itemJsonObj.getString(Constants.namespaceKey);
+                                String itemName = itemJsonObj.getString(Constants.nameKey);
+                                if (StringUtils.isBlank(itemNamespace)) {
+                                    itemNamespace = newNamespace;
+                                    typePkgMap.put(itemName, itemNamespace + Constants.point + itemName);
+                                } else {
+                                    String oldItemNamespace = itemNamespace;
+                                    String itemKey = itemNamespace + Constants.point + itemName;
+                                    itemNamespace = modulePkg + Constants.point + itemNamespace;
+                                    typePkgMap.put(oldItemNamespace, itemNamespace);
+                                    typePkgMap.put(itemKey, itemNamespace + Constants.point + itemName);
+                                }
+                                itemJsonObj.put(Constants.namespaceKey, itemNamespace);
+                            }
                         }
                     }
                 }

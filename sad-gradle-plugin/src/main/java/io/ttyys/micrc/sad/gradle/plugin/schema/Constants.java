@@ -9,9 +9,10 @@ import java.util.Map;
 public interface Constants {
     String group = "idl2protocol design";
 
-    char point = '.';
+    String point = ".";
 
     String idlExtension = "avdl";
+    String protocolKey = "protocol";
     String protocolExtension = "avpr";
     String schemaExtension = "avsc";
     String schemaNumDelimiter = "__"; // 分隔符
@@ -22,6 +23,7 @@ public interface Constants {
     String typesKey = "types";
     String typeKey = "type";
     String itemsKey = "items";
+    String messagesKey = "messages";
     String javaAnnotationKey = "javaAnnotation";
     String source = "source";
 
