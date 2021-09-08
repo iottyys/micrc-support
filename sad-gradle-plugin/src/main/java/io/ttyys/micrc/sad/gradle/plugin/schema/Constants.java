@@ -10,6 +10,7 @@ public interface Constants {
     String group = "idl2protocol design";
 
     String point = ".";
+    String empty = "";
 
     String idlExtension = "avdl";
     String protocolKey = "protocol";
@@ -17,7 +18,9 @@ public interface Constants {
     String schemaExtension = "avsc";
     String schemaNumDelimiter = "__"; // 分隔符
     String queryKeyword = "Query";
+    String controllerKeyword = "Controller";
     String nameKey = "name";
+    String srcNamespaceKey = "srcNamespace";
     String namespaceKey = "namespace";
     String fieldsKey = "fields";
     String typesKey = "types";

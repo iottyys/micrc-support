@@ -123,31 +123,38 @@ public class DealProtocolStructureTask extends OutputDirTask {
         String protocolName = jsonMainObj.getString(Constants.protocolKey);
         String curName = (String) jsonObj.getOrDefault(Constants.nameKey, protocolName);
         if (StringUtils.isBlank(curNamespace)) {
-            newNamespace = jsonMainObj.getString(Constants.namespaceKey);
-            typePkgMap.put(curName, newNamespace + Constants.point + curName);
-        } else if (typePkgMap.containsKey(curNamespace)) {
-            newNamespace = typePkgMap.get(curNamespace);
-        } else {
+            curNamespace = jsonMainObj.getString(Constants.srcNamespaceKey);
             if (protocolName != null) {
                 String schemaType = curName.toLowerCase();
-                schemaType = schemaType.endsWith("dto") ? "dto" : (schemaType.endsWith("vo") ? "vo" : "");
+                schemaType = schemaType.endsWith("dto") ? "dto" : (schemaType.endsWith("vo") ? "vo" : curNamespace);
                 if (protocolName.contains(Constants.queryKeyword)) {
                     newNamespace = modulePkg + Constants.point
                             + String.format(
                             Constants.map.getOrDefault("query" + schemaType, schemaType),
-                            protocolName.replace(Constants.queryKeyword, "").toLowerCase());
+                            protocolName.replace(Constants.queryKeyword, Constants.empty)
+                                    .replace(Constants.controllerKeyword, Constants.empty).toLowerCase());
                 } else {
                     newNamespace = modulePkg + Constants.point + Constants.map.getOrDefault(schemaType, schemaType);
                 }
             } else {
+                newNamespace = jsonMainObj.getString(Constants.namespaceKey);
+            }
+            typePkgMap.put(curName, newNamespace + Constants.point + curName);
+        } else {
+            if (typePkgMap.containsKey(curNamespace)) {
+                newNamespace = typePkgMap.get(curNamespace);
+            } else {
                 newNamespace = modulePkg + Constants.point + Constants.map.getOrDefault(curNamespace, curNamespace);
+                typePkgMap.put(curNamespace, newNamespace);
             }
             typePkgMap.put(curNamespace, newNamespace);
         }
-        jsonObj.put(Constants.namespaceKey, newNamespace);
-        typePkgMap.put(curNamespace, newNamespace);
         String key = curNamespace + Constants.point + curName;
         typePkgMap.put(key, newNamespace + Constants.point + curName);
+        if (protocolName != null && protocolName.equals(curName)) {
+            jsonObj.put(Constants.srcNamespaceKey, curNamespace);
+        }
+        jsonObj.put(Constants.namespaceKey, newNamespace);
     }
 
     private void designPkg(String modulePkg, JSONObject jsonObj, JSONObject jsonMainObj) {
@@ -178,8 +185,7 @@ public class DealProtocolStructureTask extends OutputDirTask {
                         if (messageResponseObj instanceof JSONObject) {
                             designPkg(modulePkg, (JSONObject) messageResponseObj, jsonMainObj);
                         } else if (messageResponseObj instanceof String) {
-                            messageJson.put(Constants.responseKey,
-                                    typePkgMap.get(messageJson.getString(Constants.responseKey)));
+                            messageJson.put(Constants.responseKey, typePkgMap.get(messageResponseObj));
                         }
                     }
                 }
@@ -194,11 +200,16 @@ public class DealProtocolStructureTask extends OutputDirTask {
                 if (jsonObj.containsKey(Constants.fieldsKey)) {
                     JSONArray fieldsJsonArray = jsonObj.getJSONArray(Constants.fieldsKey);
                     for (int j = 0, jLen = fieldsJsonArray.size(); j < jLen; j++) {
-                        designPkg(modulePkg, fieldsJsonArray.getJSONObject(j), jsonMainObj);
+                        designPkg(modulePkg, fieldsJsonArray.getJSONObject(j), jsonObj);
                     }
                 }
             } else if (Schema.Type.ARRAY.getName().equals(typeStr)) {
-                designPkg(modulePkg, jsonObj.getJSONObject(Constants.itemsKey), jsonMainObj);
+                Object item = jsonObj.get(Constants.itemsKey);
+                if (item instanceof JSONObject) {
+                    designPkg(modulePkg, (JSONObject) item, jsonMainObj);
+                } else if (item instanceof String) {
+                    jsonObj.put(Constants.itemsKey, typePkgMap.get(item));
+                }
             } else {
                 List<String> typeNameList = Arrays.stream(Schema.Type.values())
                         .map(Schema.Type::getName).collect(Collectors.toList());
@@ -213,7 +224,6 @@ public class DealProtocolStructureTask extends OutputDirTask {
                 }
             }
         }
-
     }
 
     private void processProtocolFile(File sourceFile, String modulePkg) {
