@@ -214,12 +214,7 @@ public class DealProtocolStructureTask extends OutputDirTask {
                 List<String> typeNameList = Arrays.stream(Schema.Type.values())
                         .map(Schema.Type::getName).collect(Collectors.toList());
                 if (!typeNameList.contains(typeStr)) {
-                    String newTypeStr;
-                    if (typeStr.contains(Constants.point)) {
-                        newTypeStr = typePkgMap.getOrDefault(typeStr, typeStr);
-                    } else {
-                        newTypeStr = jsonMainObj.getString(Constants.namespaceKey) + Constants.point + typeStr;
-                    }
+                    String newTypeStr = typePkgMap.getOrDefault(typeStr, typeStr);
                     jsonObj.put(Constants.typeKey, newTypeStr);
                 }
             }
