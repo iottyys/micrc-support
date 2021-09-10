@@ -145,12 +145,13 @@ public class DealProtocolStructureTask extends OutputDirTask {
                 newNamespace = typePkgMap.get(curNamespace);
             } else {
                 newNamespace = modulePkg + Constants.point + Constants.map.getOrDefault(curNamespace, curNamespace);
-                typePkgMap.put(curNamespace, newNamespace);
             }
             typePkgMap.put(curNamespace, newNamespace);
         }
-        String key = curNamespace + Constants.point + curName;
-        typePkgMap.put(key, newNamespace + Constants.point + curName);
+        if (StringUtils.isBlank(curNamespace)) {
+            String key = curNamespace + Constants.point + curName;
+            typePkgMap.put(key, newNamespace + Constants.point + curName);
+        }
         if (protocolName != null && protocolName.equals(curName)) {
             jsonObj.put(Constants.srcNamespaceKey, curNamespace);
         }
