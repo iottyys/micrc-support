@@ -91,6 +91,7 @@ public class DealProtocolStructureTask extends OutputDirTask {
         for (File sourceFile : filterSources(new FileExtensionSpec(Constants.protocolExtension))) {
             // 调整完成协议的包结构之后，通过上面保存的map将所有存在引用的类型应用处也进行调整
             String modulePkg = getModulePkg(projectPkg, sourceFile, srcDir);
+            typePkgMap.clear();
             processProtocolFile(sourceFile, modulePkg);
             processedFileCount++;
         }
@@ -107,6 +108,7 @@ public class DealProtocolStructureTask extends OutputDirTask {
                 JSONObject jsonObject = JSONObject.parseObject(json);
                 // 调整协议类的包结构
                 String modulePkg = getModulePkg(projectPkg, sourceFile, srcDir);
+                typePkgMap.clear();
                 designPkg(modulePkg, jsonObject, jsonObject);
                 FileUtils.writeJsonFile(sourceFile, new Schema.Parser().parse(jsonObject.toJSONString()).toString(true));
             }
@@ -148,9 +150,10 @@ public class DealProtocolStructureTask extends OutputDirTask {
             }
             typePkgMap.put(curNamespace, newNamespace);
         }
-        if (StringUtils.isBlank(curNamespace)) {
+        if (StringUtils.isNotBlank(curNamespace)) {
             String key = curNamespace + Constants.point + curName;
             typePkgMap.put(key, newNamespace + Constants.point + curName);
+            typePkgMap.put(curName, newNamespace + Constants.point + curName);
         }
         if (protocolName != null && protocolName.equals(curName)) {
             jsonObj.put(Constants.srcNamespaceKey, curNamespace);
