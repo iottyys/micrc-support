@@ -16,64 +16,47 @@
 package io.ttyys.micrc.sad.gradle.plugin.schema.task;
 
 import com.alibaba.fastjson.JSONObject;
-import io.ttyys.micrc.sad.gradle.plugin.common.Constants;
+import io.ttyys.micrc.sad.gradle.plugin.common.ProjectUtils;
 import io.ttyys.micrc.sad.gradle.plugin.common.file.FileExtensionSpec;
 import io.ttyys.micrc.sad.gradle.plugin.common.file.FileUtils;
-import io.ttyys.micrc.sad.gradle.plugin.common.file.FilenameUtils;
+import io.ttyys.micrc.sad.gradle.plugin.schema.Constants;
 import org.apache.avro.Protocol;
 import org.gradle.api.GradleException;
+import org.gradle.api.Project;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.model.ObjectFactory;
-import org.gradle.api.provider.Property;
 import org.gradle.api.specs.NotSpec;
+import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskAction;
 
 import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 
-import static io.ttyys.micrc.sad.gradle.plugin.common.Constants.PROTOCOL_EXTENSION;
 
 /**
  * 技术设计
  */
 public class DealProtocolTechnologyTask extends OutputDirTask {
 
-    private Map<String, JSONObject> moduleMap = new HashMap<>(0);
-
-    private final Property<String> sourcePath;
-    private final Property<String> destPath;
+    private final Project project;
+    private File protocolDirectory;
 
     @Inject
     public DealProtocolTechnologyTask(ObjectFactory objects) {
         super();
-        this.sourcePath = objects.property(String.class).convention(Constants.PROTOCOL_SOURCE_PATH_KEY);
-        this.destPath = objects.property(String.class).convention(Constants.PROTOCOL_DEST_PATH_KEY);
+        project = getProject();
     }
 
     @TaskAction
     protected void process() {
-        loadModuleJson();
         getLogger().info("Found {} files", getSource().getFiles().size());
         failOnUnsupportedFiles();
         processFiles();
     }
 
-    private void loadModuleJson() {
-        File destDir = new File(getProject().getProjectDir(), sourcePath.get());
-        //noinspection ConstantConditions
-        for (File file : destDir.listFiles()) {
-            String jsonStr = FileUtils.readJsonString(file.getAbsolutePath() + File.separator + Constants.MODULE_JSON_FILE_NAME);
-            JSONObject jsonObject = JSONObject.parseObject(jsonStr);
-            moduleMap.put(file.getName(), jsonObject);
-        }
-    }
-
     private void failOnUnsupportedFiles() {
-        FileCollection unsupportedFiles = filterSources(new NotSpec<>(new FileExtensionSpec(PROTOCOL_EXTENSION)));
+        FileCollection unsupportedFiles = filterSources(new NotSpec<>(new FileExtensionSpec(Constants.protocolExtension)));
         if (!unsupportedFiles.isEmpty()) {
             throw new GradleException(
                     String.format("Unsupported file extension for the following files: %s", unsupportedFiles));
@@ -82,29 +65,29 @@ public class DealProtocolTechnologyTask extends OutputDirTask {
 
     private void processFiles() {
         int processedFileCount = 0;
-        for (File sourceFile : filterSources(new FileExtensionSpec(PROTOCOL_EXTENSION))) {
-            processProtocolFile(sourceFile);
+        SourceSet sourceSet = ProjectUtils.getMainSourceSet(project);
+        File srcDir = ProjectUtils.getAvroSourceDir(project, sourceSet);
+        String projectPkg = getProjectPackage(srcDir);
+
+        for (File sourceFile : filterSources(new FileExtensionSpec(Constants.protocolExtension))) {
+            // 调整完成协议的包结构之后，通过上面保存的map将所有存在引用的类型应用处也进行调整
+            String modulePkg = getModulePkg(projectPkg, sourceFile, srcDir);
+            processProtocolFile(sourceFile, modulePkg);
             processedFileCount++;
         }
         setDidWork(processedFileCount > 0);
     }
 
-    private void processProtocolFile(File sourceFile) {
+    private void processProtocolFile(File sourceFile, String modulePkg) {
         try {
-            String requestType = sourceFile.getParentFile().getParentFile().getName();  // local rpc msg
-            String activeState = sourceFile.getParentFile().getName(); // 主动 / 被动
-            TechnologyType technologyType = TechnologyType.valueOf(requestType);
             Protocol protocol = Protocol.parse(sourceFile);
             sourceFile.deleteOnExit();
             // 添加注解  FIXME 没找到多注解的处理方案,暂时先用@拼接
-            String annotation = protocol.getProp(Constants.JAVA_ANNOTATION_KEY);
+            String annotation = protocol.getProp(Constants.javaAnnotationKey);
             annotation = annotation == null ? "" : (annotation + '@');
-            annotation += technologyType.getAnnotation(activeState,
-                    FilenameUtils.getEndpointByProtocolFile(sourceFile),
-                    FilenameUtils.removeExtension(sourceFile.getName()) + "Adapter");
             String protoJson = protocol.toString(true);
             JSONObject jsonObject = JSONObject.parseObject(protoJson);
-            jsonObject.put(Constants.JAVA_ANNOTATION_KEY, annotation);
+            jsonObject.put(Constants.javaAnnotationKey, annotation);
             FileUtils.writeJsonFile(sourceFile, Protocol.parse(jsonObject.toJSONString()).toString(true));
             getLogger().debug("协议添加结构注解完成 {}", sourceFile.getPath());
         } catch (IOException ex) {
@@ -112,56 +95,35 @@ public class DealProtocolTechnologyTask extends OutputDirTask {
         }
     }
 
-    private JSONObject getModuleJson(File sourceFile) {
-        String destPathAbs = String.join(File.separator, getProject().getProjectDir().getAbsolutePath(), destPath.get(), "");
-        String path = sourceFile.getAbsolutePath().replace(destPathAbs, "");
-        path = path.substring(0, path.indexOf(File.separator));
-        return moduleMap.get(path);
-    }
-
-    public Property<String> getSourcePath() {
-        return sourcePath;
-    }
-
-    public Property<String> getDestPath() {
-        return destPath;
-    }
-
-    public void setSourcePath(String schemaDesignPath) {
-        this.sourcePath.set(schemaDesignPath);
-    }
-
-    public void setDestPath(String destPath) {
-        this.destPath.set(destPath);
-    }
-
-    enum TechnologyType {
-        local("LocalTransfer"),
-        rpc("RpcTransfer"),
-        msg("Information"),
-        ;
-        private String type;
-
-        TechnologyType(String type) {
-            this.type = type;
+    private String getProjectPackage(File srcDir) {
+        String namespace;
+        JSONObject projectConfigJson = loadJson(srcDir, io.ttyys.micrc.sad.gradle.plugin.schema.Constants.projectJsonFileName);
+        if (projectConfigJson.containsKey(io.ttyys.micrc.sad.gradle.plugin.schema.Constants.packagePrefixKey)) {
+            namespace = projectConfigJson.getString(io.ttyys.micrc.sad.gradle.plugin.schema.Constants.packagePrefixKey);
+        } else {
+            namespace = "";
         }
+        return namespace;
+    }
 
-        public String getAnnotation(String activeState, String endpoint, String implClassName) {
-            if (Arrays.asList("called", "messaged").contains(activeState)) {
-                return getConsumerAnnotation(endpoint, implClassName);
-            } else {
-                return getProducerAnnotation(endpoint, implClassName);
-            }
-        }
+    private String getModulePkg(String projectPkg, File sourceFile, File srcDir) {
+        // 相对路径
+        String relativePath = sourceFile.getParentFile().getAbsolutePath().replaceAll(
+                protocolDirectory.getAbsolutePath().replaceAll("\\\\", "\\\\\\\\"), "");
+        String[] pathArr = relativePath.substring(1).split("\\".equals(File.separator) ? "\\\\" : File.separator); // 模块，架构功能
+        File moduleDir = new File(srcDir.getAbsolutePath(), pathArr[0]);
+        JSONObject moduleConfigJson = loadJson(moduleDir, io.ttyys.micrc.sad.gradle.plugin.schema.Constants.moduleJsonFileName);
+        // 构造结构信息
+        return projectPkg + io.ttyys.micrc.sad.gradle.plugin.schema.Constants.point + moduleConfigJson.getOrDefault(io.ttyys.micrc.sad.gradle.plugin.schema.Constants.packagePrefixKey, pathArr[0]);
+    }
 
-        private String getConsumerAnnotation(String endpoint, String implClassName) {
-            String consumerAnnotationFmt = "io.ttyys.micrc.annotations.technology.%sConsumer(endpoint=\"%s\", adapterClassName=\"%s\")";
-            return String.format(consumerAnnotationFmt, type, endpoint, implClassName);
-        }
+    public JSONObject loadJson(File srcDir, String fileName) {
+        String jsonStr = FileUtils.readJsonString(srcDir.getAbsolutePath() + File.separator + fileName);
+        return JSONObject.parseObject(jsonStr);
+    }
 
-        private String getProducerAnnotation(String endpoint, String implClassName) {
-            String producerAnnotationFmt = "io.ttyys.micrc.annotations.technology.%sProducer(endpoint=\"%s\", adapterClassName=\"%s\")";
-            return String.format(producerAnnotationFmt, type, endpoint, implClassName);
-        }
+    public DealProtocolTechnologyTask setProtocolDirectory(File protocolDirectory) {
+        this.protocolDirectory = protocolDirectory;
+        return this;
     }
 }
