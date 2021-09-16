@@ -35,13 +35,18 @@ public interface Constants {
     String projectJsonFileName = "project-config.json";
     String moduleJsonFileName = "module-config.json";
     String packagePrefixKey = "packagePrefix";
-    Map<String, String> map = new HashMap<String, String>() {
+    Map<String, String> pkgMap = new HashMap<String, String>() {
         {
             put("queryvo", "presentation.%s.model");
             put("api", "infrastructure.api.rpc");
             put("dto", "application.dto");
             put("vo", "application.vo");
             put("querydto", "presentation.%s.model");
+        }
+    };
+    Map<String, String> technologyMap = new HashMap<String, String>() {
+        {
+            put("api", "");
         }
     };
 }

@@ -43,7 +43,7 @@ public class DealProtocolTechnologyTask extends OutputDirTask {
     private File protocolDirectory;
 
     @Inject
-    public DealProtocolTechnologyTask(ObjectFactory objects) {
+    public DealProtocolTechnologyTask() {
         super();
         project = getProject();
     }
@@ -65,20 +65,15 @@ public class DealProtocolTechnologyTask extends OutputDirTask {
 
     private void processFiles() {
         int processedFileCount = 0;
-        SourceSet sourceSet = ProjectUtils.getMainSourceSet(project);
-        File srcDir = ProjectUtils.getAvroSourceDir(project, sourceSet);
-        String projectPkg = getProjectPackage(srcDir);
-
         for (File sourceFile : filterSources(new FileExtensionSpec(Constants.protocolExtension))) {
             // 调整完成协议的包结构之后，通过上面保存的map将所有存在引用的类型应用处也进行调整
-            String modulePkg = getModulePkg(projectPkg, sourceFile, srcDir);
-            processProtocolFile(sourceFile, modulePkg);
+            processProtocolFile(sourceFile);
             processedFileCount++;
         }
         setDidWork(processedFileCount > 0);
     }
 
-    private void processProtocolFile(File sourceFile, String modulePkg) {
+    private void processProtocolFile(File sourceFile) {
         try {
             Protocol protocol = Protocol.parse(sourceFile);
             sourceFile.deleteOnExit();
@@ -93,33 +88,6 @@ public class DealProtocolTechnologyTask extends OutputDirTask {
         } catch (IOException ex) {
             throw new GradleException(String.format("Failed to process protocol definition file %s", sourceFile), ex);
         }
-    }
-
-    private String getProjectPackage(File srcDir) {
-        String namespace;
-        JSONObject projectConfigJson = loadJson(srcDir, io.ttyys.micrc.sad.gradle.plugin.schema.Constants.projectJsonFileName);
-        if (projectConfigJson.containsKey(io.ttyys.micrc.sad.gradle.plugin.schema.Constants.packagePrefixKey)) {
-            namespace = projectConfigJson.getString(io.ttyys.micrc.sad.gradle.plugin.schema.Constants.packagePrefixKey);
-        } else {
-            namespace = "";
-        }
-        return namespace;
-    }
-
-    private String getModulePkg(String projectPkg, File sourceFile, File srcDir) {
-        // 相对路径
-        String relativePath = sourceFile.getParentFile().getAbsolutePath().replaceAll(
-                protocolDirectory.getAbsolutePath().replaceAll("\\\\", "\\\\\\\\"), "");
-        String[] pathArr = relativePath.substring(1).split("\\".equals(File.separator) ? "\\\\" : File.separator); // 模块，架构功能
-        File moduleDir = new File(srcDir.getAbsolutePath(), pathArr[0]);
-        JSONObject moduleConfigJson = loadJson(moduleDir, io.ttyys.micrc.sad.gradle.plugin.schema.Constants.moduleJsonFileName);
-        // 构造结构信息
-        return projectPkg + io.ttyys.micrc.sad.gradle.plugin.schema.Constants.point + moduleConfigJson.getOrDefault(io.ttyys.micrc.sad.gradle.plugin.schema.Constants.packagePrefixKey, pathArr[0]);
-    }
-
-    public JSONObject loadJson(File srcDir, String fileName) {
-        String jsonStr = FileUtils.readJsonString(srcDir.getAbsolutePath() + File.separator + fileName);
-        return JSONObject.parseObject(jsonStr);
     }
 
     public DealProtocolTechnologyTask setProtocolDirectory(File protocolDirectory) {

@@ -132,11 +132,11 @@ public class DealProtocolStructureTask extends OutputDirTask {
                 if (protocolName.contains(Constants.queryKeyword)) {
                     newNamespace = modulePkg + Constants.point
                             + String.format(
-                            Constants.map.getOrDefault("query" + schemaType, schemaType),
+                            Constants.pkgMap.getOrDefault("query" + schemaType, schemaType),
                             protocolName.replace(Constants.queryKeyword, Constants.empty)
                                     .replace(Constants.controllerKeyword, Constants.empty).toLowerCase());
                 } else {
-                    newNamespace = modulePkg + Constants.point + Constants.map.getOrDefault(schemaType, schemaType);
+                    newNamespace = modulePkg + Constants.point + Constants.pkgMap.getOrDefault(schemaType, schemaType);
                 }
             } else {
                 newNamespace = jsonMainObj.getString(Constants.namespaceKey);
@@ -146,7 +146,7 @@ public class DealProtocolStructureTask extends OutputDirTask {
             if (typePkgMap.containsKey(curNamespace)) {
                 newNamespace = typePkgMap.get(curNamespace);
             } else {
-                newNamespace = modulePkg + Constants.point + Constants.map.getOrDefault(curNamespace, curNamespace);
+                newNamespace = modulePkg + Constants.point + Constants.pkgMap.getOrDefault(curNamespace, curNamespace);
             }
             typePkgMap.put(curNamespace, newNamespace);
         }
